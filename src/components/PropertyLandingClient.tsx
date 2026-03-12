@@ -10,6 +10,8 @@ type Property = {
   slug?: string | null;
   description?: string | null;
   tour_virtual_url?: string | null;
+  widget_mode?: string | null;
+  widget_config?: WidgetConfig | null;
   images?: (string | { url?: string })[];
   address?: Record<string, unknown> | null;
   property_type?: string | null;
@@ -26,6 +28,16 @@ type Property = {
   video_url?: string | null;
 };
 
+type WidgetConfig = {
+  orb_variant?: string;
+  position?: string;
+  tooltip_text?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  auto_disconnect_timeout?: number;
+  lang?: string;
+};
+
 type Tenant = {
   id: string;
   name: string;
@@ -36,6 +48,12 @@ type Tenant = {
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
+
+declare global {
+  interface Window {
+    initAssistantWidget?: (options: Record<string, unknown>) => void;
+  }
+}
 
 const OPERATION_LABELS: Record<string, string> = {
   sale: 'VENTA',
@@ -159,6 +177,11 @@ export function PropertyLandingClient({
     }).catch(() => {});
   }, [tenant.id, property.id]);
 
+  const widgetMode = (property.widget_mode || 'auto').toLowerCase();
+  const hasTourVirtual = Boolean(property.tour_virtual_url);
+  const shouldRenderLandingWidget =
+    widgetMode === 'landing_only' || (widgetMode === 'auto' && !hasTourVirtual);
+
   const images = (property.images || [])
     .map(getImageUrl)
     .filter(Boolean) as string[];
@@ -178,6 +201,72 @@ export function PropertyLandingClient({
     '';
 
   const presentationText = `La oficina virtual de ${tenant.name} comercializa ${propType.toLowerCase()} en ${addr?.city || 'la zona'}. Descubrí cada detalle en su visita virtual y viví una experiencia única.`;
+
+  useEffect(() => {
+    if (!tenant.id || !property.id) return;
+
+    if (!shouldRenderLandingWidget) {
+      document.getElementById('sp-assistant-widget')?.remove();
+      return;
+    }
+
+    const widgetCssId = 'sp-assistant-widget-css';
+    const widgetScriptId = 'sp-assistant-widget-script';
+    let cancelled = false;
+
+    const widgetConfig = property.widget_config || {};
+
+    const initWidget = () => {
+      if (cancelled) return;
+      if (typeof window.initAssistantWidget !== 'function') return;
+      if (document.getElementById('sp-assistant-widget')) return;
+
+      window.initAssistantWidget({
+        tokenEndpoint: `${BACKEND_URL}/api/livekit/token`,
+        backendApiUrl: BACKEND_URL,
+        tenantId: tenant.id,
+        propertyId: property.id,
+        lang: widgetConfig.lang || 'es',
+        position: widgetConfig.position || 'bottom-right',
+        orbVariant: widgetConfig.orb_variant || 'classic',
+        tooltipText: widgetConfig.tooltip_text || '¿Necesitás ayuda?',
+        primaryColor: widgetConfig.primary_color || '',
+        secondaryColor: widgetConfig.secondary_color || '',
+        autoDisconnectTimeout:
+          typeof widgetConfig.auto_disconnect_timeout === 'number'
+            ? widgetConfig.auto_disconnect_timeout
+            : 300000,
+      });
+    };
+
+    if (!document.getElementById(widgetCssId)) {
+      const css = document.createElement('link');
+      css.id = widgetCssId;
+      css.rel = 'stylesheet';
+      css.href = `${BACKEND_URL}/static/widget/assistant-widget.css`;
+      document.head.appendChild(css);
+    }
+
+    const existingScript = document.getElementById(widgetScriptId) as HTMLScriptElement | null;
+    if (existingScript) {
+      if (window.initAssistantWidget) {
+        initWidget();
+      } else {
+        existingScript.addEventListener('load', initWidget, { once: true });
+      }
+    } else {
+      const script = document.createElement('script');
+      script.id = widgetScriptId;
+      script.src = `${BACKEND_URL}/static/widget/assistant-widget.js`;
+      script.async = true;
+      script.onload = initWidget;
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenant.id, property.id, property.widget_config, shouldRenderLandingWidget]);
 
   return (
     <div
@@ -556,28 +645,72 @@ function InfoCard({
   );
 }
 
-function VideoEmbed({ url }: { url: string }) {
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    const id = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/)?.[1];
-    if (id) {
-      return (
-        <iframe
-          src={`https://www.youtube.com/embed/${id}`}
-          title="Video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="h-full w-full"
-        />
-      );
+function getYouTubeEmbedUrl(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    let id = '';
+
+    if (host === 'youtu.be' || host.endsWith('.youtu.be')) {
+      id = parsed.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (
+      host === 'youtube.com' ||
+      host.endsWith('.youtube.com') ||
+      host === 'youtube-nocookie.com' ||
+      host.endsWith('.youtube-nocookie.com')
+    ) {
+      if (parsed.pathname === '/watch') {
+        id = parsed.searchParams.get('v') || '';
+      } else if (parsed.pathname.startsWith('/shorts/')) {
+        id = parsed.pathname.split('/')[2] || '';
+      } else if (parsed.pathname.startsWith('/embed/')) {
+        id = parsed.pathname.split('/')[2] || '';
+      } else if (parsed.pathname.startsWith('/live/')) {
+        id = parsed.pathname.split('/')[2] || '';
+      }
     }
+
+    if (!id || !/^[A-Za-z0-9_-]{6,}$/.test(id)) return null;
+    return `https://www.youtube.com/embed/${id}`;
+  } catch {
+    return null;
   }
-  if (url.includes('bunny.net')) {
+}
+
+function VideoEmbed({ url }: { url: string }) {
+  const ytEmbedUrl = getYouTubeEmbedUrl(url);
+  if (ytEmbedUrl) {
+    return (
+      <iframe
+        src={ytEmbedUrl}
+        title="Video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="h-full w-full"
+      />
+    );
+  }
+
+  if (url.includes('iframe.mediadelivery.net')) {
+    return (
+      <iframe
+        src={url}
+        title="Video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="h-full w-full border-0"
+      />
+    );
+  }
+
+  if (url.includes('video.bunnycdn.com')) {
     return (
       <video src={url} controls className="h-full w-full">
         Tu navegador no soporta video.
       </video>
     );
   }
+
   return (
     <a href={url} target="_blank" rel="noreferrer" className="block h-full w-full bg-zinc-200 dark:bg-zinc-800">
       Ver video
