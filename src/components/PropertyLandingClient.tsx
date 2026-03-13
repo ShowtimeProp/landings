@@ -226,6 +226,7 @@ export function PropertyLandingClient({
         backendApiUrl: BACKEND_URL,
         tenantId: tenant.id,
         propertyId: property.id,
+        source: 'landing_page',
         lang: widgetConfig.lang || 'es',
         position: widgetConfig.position || 'bottom-right',
         orbVariant: widgetConfig.orb_variant || 'classic',
@@ -286,9 +287,14 @@ export function PropertyLandingClient({
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           <a
             href="/"
-            className="text-lg font-bold tracking-tight"
+            className="inline-flex items-center gap-2 text-lg font-bold tracking-tight"
           >
-            Showtime Prop
+            <img
+              src="/showtime-logo.png"
+              alt="Showtime Prop"
+              className="h-7 w-7 object-contain"
+            />
+            <span>Showtime Prop</span>
           </a>
           <div className="flex items-center gap-4">
             <button
