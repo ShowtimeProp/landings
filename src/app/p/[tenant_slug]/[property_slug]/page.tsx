@@ -9,8 +9,10 @@ type PublicTenant = {
   id: string;
   name: string;
   slug: string;
+  tenant_name?: string | null;
   phone?: string | null;
   email?: string | null;
+  profile_photo_url?: string | null;
   logo_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
@@ -19,6 +21,7 @@ type PublicTenant = {
 type PublicProperty = {
   id: string;
   name: string;
+  property_code?: string | null;
   slug?: string | null;
   description?: string | null;
   tour_virtual_url?: string | null;
@@ -26,6 +29,7 @@ type PublicProperty = {
   address?: Record<string, unknown> | null;
   property_type?: string | null;
   operation_type?: string | null;
+  price_on_request?: boolean | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
   ambientes?: number | null;
@@ -46,6 +50,13 @@ type ApiResponse = {
 
 function sanitizePhoneToWa(phone: string) {
   return phone.replace(/[^\d]/g, "");
+}
+
+function buildWhatsappMessage(property: PublicProperty) {
+  if (property.property_code) {
+    return `Hola! Me interesa la propiedad código ${property.property_code}.`;
+  }
+  return `Hola! Me interesa la propiedad ${property.name}.`;
 }
 
 async function fetchPublicProperty(
@@ -107,7 +118,10 @@ export default async function PropertyLandingPage({
 
   const { tenant, property } = data;
   const whatsappPhone = tenant.phone ? sanitizePhoneToWa(tenant.phone) : "";
-  const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}` : "";
+  const whatsappText = buildWhatsappMessage(property);
+  const whatsappUrl = whatsappPhone
+    ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappText)}`
+    : "";
 
   return (
     <PropertyLandingClient

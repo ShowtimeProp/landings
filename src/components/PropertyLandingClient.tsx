@@ -21,6 +21,7 @@ type Property = {
   ambientes?: number | null;
   area_sqm?: number | null;
   price?: number | null;
+  price_on_request?: boolean | null;
   currency?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -42,8 +43,10 @@ type Tenant = {
   id: string;
   name: string;
   slug: string;
+  tenant_name?: string | null;
   phone?: string | null;
   email?: string | null;
+  profile_photo_url?: string | null;
   logo_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
@@ -92,6 +95,31 @@ function cloudinaryLarge(url: string): string {
 const DISCLAIMER =
   'La información gráfica, escrita e imágenes en el presente aviso son ilustrativas y a título estimativo. Las mismas no forman parte de ningún tipo de documentación contractual. Las medidas y superficies definitivas surgirán del título de propiedad del inmueble referido.';
 
+function safeAddressPart(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildAddressLine(address?: Record<string, unknown> | null): string {
+  if (!address) return '';
+
+  const street = safeAddressPart(address.street);
+  const streetNumber =
+    safeAddressPart(address.street_number) ||
+    safeAddressPart(address.number) ||
+    safeAddressPart(address.streetNumber);
+  const city =
+    safeAddressPart(address.city) ||
+    safeAddressPart(address.locality);
+  const state =
+    safeAddressPart(address.state) ||
+    safeAddressPart(address.province);
+  const country = safeAddressPart(address.country);
+
+  const streetLine = [street, streetNumber].filter(Boolean).join(' ');
+
+  return [streetLine, city, state, country].filter(Boolean).join(', ');
+}
+
 function getInitialDarkMode(): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -120,6 +148,8 @@ export function PropertyLandingClient({
     rating: number | null;
     reviews: { author_name?: string; rating?: number; text?: string; relative_time_description?: string }[];
     user_ratings_total: number;
+    open_now?: boolean | null;
+    opening_hours?: string[];
   } | null>(null);
 
   useEffect(() => {
@@ -185,6 +215,7 @@ export function PropertyLandingClient({
   const images = (property.images || [])
     .map(getImageUrl)
     .filter(Boolean) as string[];
+  const heroHasMedia = hasTourVirtual || images.length > 0;
 
   const opLabel =
     OPERATION_LABELS[property.operation_type || ''] ||
@@ -195,10 +226,24 @@ export function PropertyLandingClient({
     'Propiedad';
 
   const addr = property.address as Record<string, string> | undefined;
+  const fullAddress = buildAddressLine(addr);
   const addressStr =
     property.name ||
-    [addr?.street, addr?.city].filter(Boolean).join(', ') ||
+    fullAddress ||
     '';
+  const contactName = tenant.tenant_name || tenant.name;
+  const businessName =
+    tenant.tenant_name && tenant.tenant_name !== tenant.name ? tenant.name : null;
+  const mapQuery =
+    property.latitude != null && property.longitude != null
+      ? `${property.latitude},${property.longitude}`
+      : fullAddress;
+  const googleMapsUrl = mapQuery
+    ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}`
+    : '';
+  const googleMapsEmbedUrl = mapQuery
+    ? `${googleMapsUrl}&z=15&output=embed`
+    : '';
 
   const presentationText = `La oficina virtual de ${tenant.name} comercializa ${propType.toLowerCase()} en ${addr?.city || 'la zona'}. Descubrí cada detalle en su visita virtual y viví una experiencia única.`;
 
@@ -222,7 +267,7 @@ export function PropertyLandingClient({
       if (document.getElementById('sp-assistant-widget')) return;
 
       window.initAssistantWidget({
-        tokenEndpoint: `${BACKEND_URL}/api/livekit/token`,
+        tokenEndpoint: `${BACKEND_URL}/api/assistant-ia/token`,
         backendApiUrl: BACKEND_URL,
         tenantId: tenant.id,
         propertyId: property.id,
@@ -351,25 +396,62 @@ export function PropertyLandingClient({
 
       <main className="pt-14">
         {property.tour_virtual_url ? (
-          <section className="relative w-full" style={{ height: '72vh' }}>
+          <section className="relative min-h-[78svh] w-full overflow-hidden sm:min-h-[calc(100svh-3.5rem)]">
             <iframe
               src={property.tour_virtual_url}
               title={`Tour virtual - ${property.name}`}
-              className="h-full w-full border-0"
+              className="absolute inset-0 h-full w-full border-0"
               allow="fullscreen; autoplay; clipboard-write"
             />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           </section>
         ) : images.length > 0 ? (
-          <section className="relative h-[50vh] w-full overflow-hidden">
+          <section className="relative min-h-[78svh] w-full overflow-hidden sm:min-h-[calc(100svh-3.5rem)]">
             <img
               src={cloudinaryLarge(images[0])}
               alt={property.name}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
             />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/45" />
           </section>
         ) : null}
 
-        <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+        {heroHasMedia && (
+          <div className="pointer-events-none relative z-10 -mt-24 flex justify-center px-4 sm:px-6">
+            <a
+              href="#property-overview"
+              className={`pointer-events-auto inline-flex items-center gap-3 rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition hover:-translate-y-0.5 ${
+                dark
+                  ? 'border-white/15 bg-zinc-950/75 text-zinc-100 hover:bg-zinc-900/85'
+                  : 'border-white/70 bg-white/82 text-zinc-900 hover:bg-white'
+              }`}
+              aria-label="Ir al detalle de la propiedad"
+            >
+              <span className="tracking-[0.18em] uppercase text-[11px]">Seguí bajando</span>
+              <span
+                className={`flex h-7 w-7 animate-bounce items-center justify-center rounded-full ${
+                  dark ? 'bg-white/10' : 'bg-black/5'
+                }`}
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 5v14m0 0l-6-6m6 6l6-6"
+                  />
+                </svg>
+              </span>
+            </a>
+          </div>
+        )}
+
+        <section id="property-overview" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6">
           <div className="mb-6 inline-block rounded bg-black px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black">
             {opLabel}
           </div>
@@ -379,9 +461,11 @@ export function PropertyLandingClient({
           <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
             {presentationText}
           </p>
-          <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-500">
-            {DISCLAIMER}
-          </p>
+          {fullAddress && (
+            <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Dirección de referencia: {fullAddress}
+            </p>
+          )}
 
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             <InfoCard
@@ -422,11 +506,15 @@ export function PropertyLandingClient({
                 dark={dark}
               />
             )}
-            {property.price != null && (
+            {(property.price_on_request || property.price != null) && (
               <InfoCard
                 icon="price"
                 label="PRECIO"
-                value={`${property.currency || 'USD'} ${property.price.toLocaleString('es-AR')}`}
+                value={
+                  property.price_on_request
+                    ? 'Consultar precio'
+                    : `${property.currency || 'USD'} ${property.price!.toLocaleString('es-AR')}`
+                }
                 dark={dark}
               />
             )}
@@ -515,24 +603,33 @@ export function PropertyLandingClient({
           </section>
         )}
 
-        {property.latitude != null && property.longitude != null && (
+        {googleMapsEmbedUrl && (
           <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
             <h2 className="mb-6 text-2xl font-bold">Ubicación</h2>
             <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
               <iframe
                 title="Mapa"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude - 0.01}%2C${property.latitude - 0.01}%2C${property.longitude + 0.01}%2C${property.latitude + 0.01}&layer=mapnik&marker=${property.latitude}%2C${property.longitude}`}
+                src={googleMapsEmbedUrl}
                 className="h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
-            <a
-              href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-block text-sm text-zinc-600 underline dark:text-zinc-400"
-            >
-              Ver en Google Maps
-            </a>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              {fullAddress && (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  Tomá esta dirección como punto de referencia geográfica.
+                </p>
+              )}
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-sm text-zinc-600 underline dark:text-zinc-400"
+              >
+                Ver en Google Maps
+              </a>
+            </div>
           </section>
         )}
 
@@ -545,12 +642,15 @@ export function PropertyLandingClient({
           </section>
         )}
 
-        {reviews && (reviews.rating != null || reviews.reviews.length > 0) && (
+        {reviews &&
+          (reviews.rating != null ||
+            reviews.reviews.length > 0 ||
+            (reviews.opening_hours && reviews.opening_hours.length > 0)) && (
           <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
             <h2 className="mb-6 text-2xl font-bold">Opiniones en Google</h2>
             <div className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
               {reviews.rating != null && (
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-6 flex flex-wrap items-center gap-3">
                   <span className="text-2xl font-bold">{reviews.rating.toFixed(1)}</span>
                   <div className="flex text-amber-400">
                     {[1, 2, 3, 4, 5].map((i) => (
@@ -562,44 +662,117 @@ export function PropertyLandingClient({
                       ({reviews.user_ratings_total} opiniones)
                     </span>
                   )}
+                  {typeof reviews.open_now === 'boolean' && (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                        reviews.open_now
+                          ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-zinc-500/12 text-zinc-600 dark:text-zinc-300'
+                      }`}
+                    >
+                      {reviews.open_now ? 'Abierto ahora' : 'Cerrado ahora'}
+                    </span>
+                  )}
                 </div>
               )}
-              <div className="space-y-4">
-                {reviews.reviews.map((r, i) => (
-                  <div key={i} className="border-t border-zinc-200 pt-4 dark:border-zinc-700 first:border-0 first:pt-0">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="font-medium">{r.author_name}</span>
-                      {r.rating != null && (
-                        <span className="text-amber-400">
-                          {'★'.repeat(Math.round(r.rating))}
-                          {'☆'.repeat(5 - Math.round(r.rating))}
-                        </span>
-                      )}
-                      {r.relative_time_description && (
-                        <span className="text-xs text-zinc-500">{r.relative_time_description}</span>
-                      )}
-                    </div>
-                    {r.text && <p className="text-sm text-zinc-600 dark:text-zinc-400">{r.text}</p>}
+              {reviews.opening_hours && reviews.opening_hours.length > 0 && (
+                <div className="mb-6 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-900/60">
+                  <p className="text-sm font-semibold">Horarios de atención</p>
+                  <div className="mt-3 space-y-2">
+                    {reviews.opening_hours.map((line, index) => (
+                      <p key={index} className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {line}
+                      </p>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+              {reviews.reviews.length > 0 && (
+                <div>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Reseñas destacadas 4 y 5 estrellas
+                  </p>
+                  <div className="space-y-4">
+                    {reviews.reviews.map((r, i) => (
+                      <div key={i} className="border-t border-zinc-200 pt-4 dark:border-zinc-700 first:border-0 first:pt-0">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="font-medium">{r.author_name}</span>
+                          {r.rating != null && (
+                            <span className="text-amber-400">
+                              {'★'.repeat(Math.round(r.rating))}
+                              {'☆'.repeat(5 - Math.round(r.rating))}
+                            </span>
+                          )}
+                          {r.relative_time_description && (
+                            <span className="text-xs text-zinc-500">{r.relative_time_description}</span>
+                          )}
+                        </div>
+                        {r.text && <p className="text-sm text-zinc-600 dark:text-zinc-400">{r.text}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {reviews.rating != null && reviews.reviews.length === 0 && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  La ficha de Google no devolvió reseñas destacadas de 4 o 5 estrellas para mostrar en este momento.
+                </p>
+              )}
+              {!reviews.rating && (!reviews.opening_hours || reviews.opening_hours.length === 0) && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  No hay información pública de Google disponible en este momento.
+                </p>
+              )}
             </div>
           </section>
         )}
 
         <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-          <div className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-700 sm:flex-row sm:items-center">
-            {tenant.logo_url && (
-              <img
-                src={tenant.logo_url}
-                alt={tenant.name}
-                className="h-16 w-16 rounded-lg object-contain"
-              />
-            )}
+          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 dark:border-zinc-700 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-4">
+              <div className="space-y-2 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Tu asesor
+                </p>
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  {tenant.profile_photo_url ? (
+                    <img
+                      src={tenant.profile_photo_url}
+                      alt={contactName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-semibold text-zinc-500">
+                      {contactName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {tenant.logo_url && (
+                <div className="space-y-2 text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Inmobiliaria
+                  </p>
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                    <img
+                      src={tenant.logo_url}
+                      alt={tenant.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex-1">
-              <h3 className="font-semibold">{tenant.name}</h3>
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+                Info de la inmobiliaria o comercio
+              </p>
+              <h3 className="mt-1 font-semibold">{contactName}</h3>
+              {businessName && (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{businessName}</p>
+              )}
               {tenant.phone && (
-                <a href={`tel:${tenant.phone}`} className="block text-sm text-zinc-600 dark:text-zinc-400">
+                <a href={`tel:${tenant.phone}`} className="mt-2 block text-sm text-zinc-600 dark:text-zinc-400">
                   {tenant.phone}
                 </a>
               )}
@@ -621,6 +794,13 @@ export function PropertyLandingClient({
             )}
           </div>
         </section>
+        <footer className="border-t border-zinc-200 px-4 py-6 dark:border-zinc-800 sm:px-6">
+          <div className="mx-auto max-w-4xl">
+            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+              {DISCLAIMER}
+            </p>
+          </div>
+        </footer>
       </main>
     </div>
   );
