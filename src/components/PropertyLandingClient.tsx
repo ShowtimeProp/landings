@@ -73,6 +73,11 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   local: 'Local',
   land: 'Terreno',
   garage: 'Cochera',
+  project: 'Proyecto: Inversión del Pozo',
+  proyecto: 'Proyecto: Inversión del Pozo',
+  desarrollo: 'Proyecto: Inversión del Pozo',
+  inversion_pozo: 'Proyecto: Inversión del Pozo',
+  inversion_en_pozo: 'Proyecto: Inversión del Pozo',
   other: 'Otro',
 };
 
@@ -120,16 +125,27 @@ function buildAddressLine(address?: Record<string, unknown> | null): string {
   return [streetLine, city, state, country].filter(Boolean).join(', ');
 }
 
-function getInitialDarkMode(): boolean {
-  if (typeof window === 'undefined') return false;
+type ThemeMode = 'light' | 'soft' | 'dark';
+
+function normalizeThemeMode(raw: string | null | undefined): ThemeMode {
+  const value = String(raw || '').trim().toLowerCase();
+  if (value === 'light') return 'light';
+  if (value === 'soft' || value === 'neutral' || value === 'mid') return 'soft';
+  return 'dark';
+}
+
+function getInitialThemeMode(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
   try {
-    const stored = window.localStorage.getItem('landing-theme');
-    if (stored === 'dark') return true;
-    if (stored === 'light') return false;
+    const storedMode = window.localStorage.getItem('landing-theme-mode');
+    if (storedMode) return normalizeThemeMode(storedMode);
+    const legacy = window.localStorage.getItem('landing-theme');
+    if (legacy === 'dark') return 'dark';
+    if (legacy === 'light') return 'light';
   } catch {
     // ignore localStorage errors
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function PropertyLandingClient({
@@ -141,7 +157,7 @@ export function PropertyLandingClient({
   property: Property;
   whatsappUrl: string;
 }) {
-  const [dark, setDark] = useState<boolean>(() => getInitialDarkMode());
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
   const [scrolled, setScrolled] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({});
@@ -152,6 +168,10 @@ export function PropertyLandingClient({
     open_now?: boolean | null;
     opening_hours?: string[];
   } | null>(null);
+  const isLight = themeMode === 'light';
+  const isSoft = themeMode === 'soft';
+  const isDark = themeMode === 'dark';
+  const darkFamilyMode = !isLight;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -159,16 +179,17 @@ export function PropertyLandingClient({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const toggleDark = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem('landing-theme', next ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', next);
+  const cycleThemeMode = () => {
+    const next: ThemeMode = isDark ? 'soft' : isSoft ? 'light' : 'dark';
+    setThemeMode(next);
+    localStorage.setItem('landing-theme-mode', next);
+    localStorage.setItem('landing-theme', next === 'light' ? 'light' : 'dark');
   };
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-  }, [dark]);
+    document.documentElement.classList.toggle('dark', darkFamilyMode);
+    document.documentElement.setAttribute('data-landing-theme', themeMode);
+  }, [darkFamilyMode, themeMode]);
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal-id]'));
@@ -242,9 +263,10 @@ export function PropertyLandingClient({
   const opLabel =
     OPERATION_LABELS[property.operation_type || ''] ||
     (property.operation_type || '').toUpperCase();
+  const rawPropertyType = String(property.property_type || '').trim();
   const propType =
-    PROPERTY_TYPE_LABELS[property.property_type || ''] ||
-    property.property_type ||
+    PROPERTY_TYPE_LABELS[rawPropertyType.toLowerCase()] ||
+    rawPropertyType ||
     'Propiedad';
 
   const addr = property.address as Record<string, string> | undefined;
@@ -381,15 +403,21 @@ export function PropertyLandingClient({
   return (
     <div
       className={`min-h-screen transition-colors duration-300 ${
-        dark ? 'bg-zinc-950 text-zinc-100' : 'bg-white text-zinc-900'
+        isLight
+          ? 'bg-white text-zinc-900'
+          : isSoft
+          ? 'bg-slate-900 text-zinc-100'
+          : 'bg-zinc-950 text-zinc-100'
       }`}
     >
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? dark
-              ? 'bg-zinc-950/95 backdrop-blur'
-              : 'bg-white/95 backdrop-blur'
+            ? isLight
+              ? 'bg-white/95 backdrop-blur'
+              : isSoft
+              ? 'bg-slate-900/88 backdrop-blur'
+              : 'bg-zinc-950/95 backdrop-blur'
             : 'bg-transparent'
         }`}
       >
@@ -408,9 +436,9 @@ export function PropertyLandingClient({
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={toggleDark}
+              onClick={cycleThemeMode}
               className="rounded-full p-2 transition hover:bg-black/5 dark:hover:bg-white/10"
-              aria-label="Modo oscuro"
+              aria-label="Cambiar tema"
             >
               <svg
                 className="h-5 w-5"
@@ -418,12 +446,19 @@ export function PropertyLandingClient({
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                {dark ? (
+                {isDark ? (
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
                     d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                ) : isSoft ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
                   />
                 ) : (
                   <path
@@ -484,13 +519,13 @@ export function PropertyLandingClient({
           <div className="pointer-events-none relative z-10 -mt-24 flex justify-center px-4 sm:px-6">
             <a
               href="#property-overview"
-              className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/65 bg-white/5 text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/12 hover:shadow-[0_14px_35px_rgba(0,0,0,0.52)]"
+              className="pointer-events-auto inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-transparent text-white shadow-[0_12px_34px_rgba(0,0,0,0.50)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(0,0,0,0.56)]"
               aria-label="Ir al detalle de la propiedad"
             >
               <span className="sr-only">Bajar al detalle</span>
-              <span className="relative flex h-6 w-6 items-center justify-center">
+              <span className="relative flex h-8 w-8 items-center justify-center">
                 <svg
-                  className="absolute h-5 w-5 animate-bounce opacity-95 [animation-duration:1.5s]"
+                  className="absolute h-6 w-6 animate-bounce opacity-95 [animation-duration:1.5s]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -503,7 +538,7 @@ export function PropertyLandingClient({
                   />
                 </svg>
                 <svg
-                  className="absolute mt-2 h-5 w-5 animate-bounce opacity-55 [animation-delay:180ms] [animation-duration:1.5s]"
+                  className="absolute mt-2 h-6 w-6 animate-bounce opacity-55 [animation-delay:180ms] [animation-duration:1.5s]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -545,14 +580,14 @@ export function PropertyLandingClient({
               icon="type"
               label="TIPO"
               value={propType}
-              dark={dark}
+              themeMode={themeMode}
             />
             {property.ambientes != null && (
               <InfoCard
                 icon="rooms"
                 label="AMBIENTES"
                 value={String(property.ambientes)}
-                dark={dark}
+                themeMode={themeMode}
               />
             )}
             {property.bedrooms != null && (
@@ -560,7 +595,7 @@ export function PropertyLandingClient({
                 icon="bed"
                 label="DORMITORIOS"
                 value={String(property.bedrooms)}
-                dark={dark}
+                themeMode={themeMode}
               />
             )}
             {property.bathrooms != null && (
@@ -568,7 +603,7 @@ export function PropertyLandingClient({
                 icon="bath"
                 label="BAÑOS"
                 value={String(property.bathrooms)}
-                dark={dark}
+                themeMode={themeMode}
               />
             )}
             {property.area_sqm != null && (
@@ -576,7 +611,7 @@ export function PropertyLandingClient({
                 icon="area"
                 label="SUPERFICIE"
                 value={`${property.area_sqm} m²`}
-                dark={dark}
+                themeMode={themeMode}
               />
             )}
             {(property.price_on_request || property.price != null) && (
@@ -588,7 +623,7 @@ export function PropertyLandingClient({
                     ? 'Consultar precio'
                     : `${property.currency || 'USD'} ${property.price!.toLocaleString('es-AR')}`
                 }
-                dark={dark}
+                themeMode={themeMode}
               />
             )}
           </div>
@@ -916,6 +951,18 @@ export function PropertyLandingClient({
             <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
               {DISCLAIMER}
             </p>
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
+              Todos los derechos reservados Showtime Prop - Especialistas en Marketing Inmobiliario e
+              Inteligencia Artificial.{' '}
+              <a
+                href="https://showtimeprop.com"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold underline"
+              >
+                showtimeprop.com
+              </a>
+            </p>
           </div>
         </footer>
       </main>
@@ -927,19 +974,21 @@ function InfoCard({
   icon,
   label,
   value,
-  dark,
+  themeMode,
 }: {
   icon: string;
   label: string;
   value: string;
-  dark: boolean;
+  themeMode: ThemeMode;
 }) {
+  const cardClass =
+    themeMode === 'light'
+      ? 'border-zinc-200 bg-zinc-50'
+      : themeMode === 'soft'
+      ? 'border-slate-500/55 bg-slate-800/55'
+      : 'border-zinc-700 bg-zinc-900/50';
   return (
-    <div
-      className={`rounded-xl border p-4 transition ${
-        dark ? 'border-zinc-700 bg-zinc-900/50' : 'border-zinc-200 bg-zinc-50'
-      }`}
-    >
+    <div className={`rounded-xl border p-4 transition ${cardClass}`}>
       <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
         {label}
       </div>
