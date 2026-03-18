@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
+import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -116,29 +117,6 @@ function normalizeTheme(raw: string | null | undefined): PortfolioTheme {
   return 'dark';
 }
 
-function getFirstImageUrl(images?: unknown[]): string | null {
-  if (!images || images.length === 0) return null;
-  const first = images[0];
-  if (typeof first === 'string') return first;
-  if (first && typeof first === 'object' && 'url' in first) {
-    return (first as { url?: string }).url ?? null;
-  }
-  return null;
-}
-
-function cloudinaryCard(url: string): string {
-  if (!url.includes('cloudinary.com')) return url;
-  if (url.includes('/upload/')) {
-    return url.replace('/upload/', '/upload/w_900,h_600,c_fill,f_auto,q_auto/');
-  }
-  return url;
-}
-
-function formatPrice(value?: number | null, currency?: string | null): string | null {
-  if (value == null) return null;
-  return `${currency || 'USD'} ${value.toLocaleString('es-AR')}`;
-}
-
 function getWhatsappUrl(phone?: string | null, tenantName?: string): string | null {
   const digits = (phone || '').replace(/[^\d]/g, '');
   if (!digits) return null;
@@ -160,29 +138,6 @@ export async function generateMetadata({
     title: `Portfolio | ${data.tenant.name}`,
     description: `Propiedades de ${data.tenant.name}`,
   };
-}
-
-function FeatureChip({
-  label,
-  value,
-  theme,
-}: {
-  label: string;
-  value: string | number;
-  theme: PortfolioTheme;
-}) {
-  const chipClass =
-    theme === 'light'
-      ? 'border-zinc-200 bg-zinc-50 text-zinc-700'
-      : theme === 'soft'
-      ? 'border-white/25 bg-white/10 text-zinc-100'
-      : 'border-white/20 bg-white/5 text-white/85';
-
-  return (
-    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${chipClass}`}>
-      {value} {label}
-    </span>
-  );
 }
 
 export default async function PortfolioPage({
@@ -445,75 +400,22 @@ export default async function PortfolioPage({
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {properties.map((item) => {
-                const href = item.slug
-                  ? `/p/${tenant.slug}/${item.slug}`
-                  : `/p/${tenant.slug}/${item.id}`;
-                const imgUrl = getFirstImageUrl(item.images);
-                const cardImage = imgUrl ? cloudinaryCard(imgUrl) : null;
-                const price = item.price_on_request
-                  ? 'Consultar precio'
-                  : formatPrice(item.price, item.currency);
                 const propertyType = normalizeLabel(item.property_type, PROPERTY_TYPE_LABELS);
                 const operationType = normalizeLabel(item.operation_type, OPERATION_LABELS);
 
                 return (
-                  <Link
+                  <PortfolioPropertyCard
                     key={item.id}
-                    href={href}
-                    className={`group overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1.5 ${cardClass}`}
-                  >
-                    <div className={`relative aspect-[16/10] overflow-hidden ${isLight ? 'bg-zinc-200' : 'bg-zinc-950'}`}>
-                      {cardImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={cardImage}
-                          alt={item.name}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                        />
-                      ) : (
-                        <div className={`flex h-full w-full items-center justify-center text-sm ${isLight ? 'text-zinc-600' : 'text-zinc-500'}`}>
-                          Sin imagen
-                        </div>
-                      )}
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                      {item.tour_virtual_url && (
-                        <span className="absolute left-3 top-3 rounded-full border border-cyan-300/45 bg-cyan-400/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
-                          Tour 360
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-3 p-4">
-                      <h2 className={`line-clamp-2 text-lg font-semibold leading-snug ${titleTextClass}`}>{item.name}</h2>
-
-                      <div className="flex flex-wrap gap-2">
-                        {propertyType && (
-                          <span className={`rounded-full border px-2.5 py-1 text-[11px] ${badgeBaseClass}`}>
-                            {propertyType}
-                          </span>
-                        )}
-                        {operationType && (
-                          <span className={`rounded-full border px-2.5 py-1 text-[11px] ${badgeBaseClass}`}>
-                            {operationType}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {item.ambientes != null && <FeatureChip label="amb" value={item.ambientes} theme={theme} />}
-                        {item.bedrooms != null && <FeatureChip label="dorm" value={item.bedrooms} theme={theme} />}
-                        {item.bathrooms != null && <FeatureChip label="baños" value={item.bathrooms} theme={theme} />}
-                        {item.area_sqm != null && <FeatureChip label="m²" value={Math.round(item.area_sqm)} theme={theme} />}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1">
-                        <p className={`text-base font-semibold ${titleTextClass}`}>{price || 'Precio a consultar'}</p>
-                        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200 transition group-hover:text-cyan-100">
-                          Ver detalle
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
+                    tenantSlug={tenant.slug}
+                    item={item}
+                    theme={theme}
+                    isLight={isLight}
+                    cardClass={cardClass}
+                    titleTextClass={titleTextClass}
+                    badgeBaseClass={badgeBaseClass}
+                    propertyType={propertyType}
+                    operationType={operationType}
+                  />
                 );
               })}
             </div>
