@@ -144,6 +144,7 @@ export function PropertyLandingClient({
   const [dark, setDark] = useState<boolean>(() => getInitialDarkMode());
   const [scrolled, setScrolled] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({});
   const [reviews, setReviews] = useState<{
     rating: number | null;
     reviews: { author_name?: string; rating?: number; text?: string; relative_time_description?: string }[];
@@ -168,6 +169,27 @@ export function PropertyLandingClient({
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal-id]'));
+    if (!nodes.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const id = entry.target.getAttribute('data-reveal-id');
+          if (!id) return;
+          setRevealedSections((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
+          observer.unobserve(entry.target);
+        });
+      },
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.12 }
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!tenant.google_place_id || !tenant.slug) return;
@@ -246,6 +268,48 @@ export function PropertyLandingClient({
     : '';
 
   const presentationText = `La oficina virtual de ${tenant.name} comercializa ${propType.toLowerCase()} en ${addr?.city || 'la zona'}. Descubrí cada detalle en su visita virtual y viví una experiencia única.`;
+  const revealClass = (id: string) =>
+    `transform transition-all duration-700 ease-out ${
+      revealedSections[id] ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+    }`;
+  const galleryCount = images.length;
+
+  const goPrevImage = () => {
+    if (galleryCount <= 1 || galleryIndex === null) return;
+    setGalleryIndex((prev) => {
+      if (prev === null) return null;
+      return (prev - 1 + galleryCount) % galleryCount;
+    });
+  };
+
+  const goNextImage = () => {
+    if (galleryCount <= 1 || galleryIndex === null) return;
+    setGalleryIndex((prev) => {
+      if (prev === null) return null;
+      return (prev + 1) % galleryCount;
+    });
+  };
+
+  useEffect(() => {
+    if (galleryIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setGalleryIndex(null);
+      if (e.key === 'ArrowLeft' && galleryCount > 1) {
+        setGalleryIndex((prev) => {
+          if (prev === null) return null;
+          return (prev - 1 + galleryCount) % galleryCount;
+        });
+      }
+      if (e.key === 'ArrowRight' && galleryCount > 1) {
+        setGalleryIndex((prev) => {
+          if (prev === null) return null;
+          return (prev + 1) % galleryCount;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [galleryIndex, galleryCount]);
 
   useEffect(() => {
     if (!tenant.id || !property.id) return;
@@ -420,21 +484,13 @@ export function PropertyLandingClient({
           <div className="pointer-events-none relative z-10 -mt-24 flex justify-center px-4 sm:px-6">
             <a
               href="#property-overview"
-              className={`pointer-events-auto inline-flex items-center gap-3 rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition hover:-translate-y-0.5 ${
-                dark
-                  ? 'border-white/15 bg-zinc-950/75 text-zinc-100 hover:bg-zinc-900/85'
-                  : 'border-white/70 bg-white/82 text-zinc-900 hover:bg-white'
-              }`}
+              className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/65 bg-white/5 text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/12 hover:shadow-[0_14px_35px_rgba(0,0,0,0.52)]"
               aria-label="Ir al detalle de la propiedad"
             >
-              <span className="tracking-[0.18em] uppercase text-[11px]">Seguí bajando</span>
-              <span
-                className={`flex h-7 w-7 animate-bounce items-center justify-center rounded-full ${
-                  dark ? 'bg-white/10' : 'bg-black/5'
-                }`}
-              >
+              <span className="sr-only">Bajar al detalle</span>
+              <span className="relative flex h-6 w-6 items-center justify-center">
                 <svg
-                  className="h-4 w-4"
+                  className="absolute h-5 w-5 animate-bounce opacity-95 [animation-duration:1.5s]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -443,7 +499,20 @@ export function PropertyLandingClient({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 5v14m0 0l-6-6m6 6l6-6"
+                    d="M6 9l6 6 6-6"
+                  />
+                </svg>
+                <svg
+                  className="absolute mt-2 h-5 w-5 animate-bounce opacity-55 [animation-delay:180ms] [animation-duration:1.5s]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 9l6 6 6-6"
                   />
                 </svg>
               </span>
@@ -451,7 +520,11 @@ export function PropertyLandingClient({
           </div>
         )}
 
-        <section id="property-overview" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6">
+        <section
+          id="property-overview"
+          data-reveal-id="overview"
+          className={`mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6 ${revealClass('overview')}`}
+        >
           <div className="mb-6 inline-block rounded bg-black px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black">
             {opLabel}
           </div>
@@ -543,7 +616,10 @@ export function PropertyLandingClient({
         </section>
 
         {images.length > 0 && (
-          <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <section
+            data-reveal-id="gallery"
+            className={`mx-auto max-w-6xl px-4 py-12 sm:px-6 ${revealClass('gallery')}`}
+          >
             <h2 className="mb-6 text-2xl font-bold">Galería</h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {images.map((url, i) => (
@@ -551,12 +627,12 @@ export function PropertyLandingClient({
                   key={i}
                   type="button"
                   onClick={() => setGalleryIndex(i)}
-                  className="aspect-[4/3] overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="group aspect-[4/3] overflow-hidden rounded-lg border border-transparent shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:hover:border-zinc-700"
                 >
                   <img
                     src={cloudinaryThumb(url)}
                     alt={`Foto ${i + 1}`}
-                    className="h-full w-full object-cover transition hover:scale-105"
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 </button>
               ))}
@@ -568,7 +644,6 @@ export function PropertyLandingClient({
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
             onClick={() => setGalleryIndex(null)}
-            onKeyDown={(e) => e.key === 'Escape' && setGalleryIndex(null)}
             role="button"
             tabIndex={0}
           >
@@ -587,13 +662,49 @@ export function PropertyLandingClient({
               className="max-h-[90vh] max-w-full object-contain"
               onClick={(e) => e.stopPropagation()}
             />
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goPrevImage();
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white transition hover:bg-white/30"
+                  aria-label="Imagen anterior"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goNextImage();
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white transition hover:bg-white/30"
+                  aria-label="Imagen siguiente"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+            <div className="absolute bottom-5 rounded-full bg-black/55 px-3 py-1 text-sm text-white/90">
+              {galleryIndex + 1} / {images.length}
+            </div>
           </div>
         )}
 
         {property.floor_plan_url && (
-          <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+          <section
+            data-reveal-id="plan"
+            className={`mx-auto max-w-4xl px-4 py-12 sm:px-6 ${revealClass('plan')}`}
+          >
             <h2 className="mb-6 text-2xl font-bold">Plano</h2>
-            <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+            <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
               <img
                 src={property.floor_plan_url}
                 alt="Plano de la propiedad"
@@ -604,9 +715,12 @@ export function PropertyLandingClient({
         )}
 
         {googleMapsEmbedUrl && (
-          <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <section
+            data-reveal-id="location"
+            className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('location')}`}
+          >
             <h2 className="mb-6 text-2xl font-bold">Ubicación</h2>
-            <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+            <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
               <iframe
                 title="Mapa"
                 src={googleMapsEmbedUrl}
@@ -634,9 +748,12 @@ export function PropertyLandingClient({
         )}
 
         {property.video_url && (
-          <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+          <section
+            data-reveal-id="video"
+            className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('video')}`}
+          >
             <h2 className="mb-6 text-2xl font-bold">Video</h2>
-            <div className="aspect-video overflow-hidden rounded-xl">
+            <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
               <VideoEmbed url={property.video_url} />
             </div>
           </section>
@@ -646,9 +763,12 @@ export function PropertyLandingClient({
           (reviews.rating != null ||
             reviews.reviews.length > 0 ||
             (reviews.opening_hours && reviews.opening_hours.length > 0)) && (
-          <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+          <section
+            data-reveal-id="reviews"
+            className={`mx-auto max-w-4xl px-4 py-12 sm:px-6 ${revealClass('reviews')}`}
+          >
             <h2 className="mb-6 text-2xl font-bold">Opiniones en Google</h2>
-            <div className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
+            <div className="rounded-xl border border-zinc-200 p-6 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
               {reviews.rating != null && (
                 <div className="mb-6 flex flex-wrap items-center gap-3">
                   <span className="text-2xl font-bold">{reviews.rating.toFixed(1)}</span>
@@ -727,8 +847,11 @@ export function PropertyLandingClient({
           </section>
         )}
 
-        <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 dark:border-zinc-700 sm:flex-row sm:items-center">
+        <section
+          data-reveal-id="contact"
+          className={`mx-auto max-w-4xl px-4 py-12 sm:px-6 ${revealClass('contact')}`}
+        >
+          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700 sm:flex-row sm:items-center">
             <div className="flex items-center gap-4">
               <div className="space-y-2 text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -750,9 +873,6 @@ export function PropertyLandingClient({
               </div>
               {tenant.logo_url && (
                 <div className="space-y-2 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Inmobiliaria
-                  </p>
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                     <img
                       src={tenant.logo_url}
@@ -764,10 +884,7 @@ export function PropertyLandingClient({
               )}
             </div>
             <div className="flex-1">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
-                Info de la inmobiliaria o comercio
-              </p>
-              <h3 className="mt-1 font-semibold">{contactName}</h3>
+              <h3 className="font-semibold">{contactName}</h3>
               {businessName && (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{businessName}</p>
               )}

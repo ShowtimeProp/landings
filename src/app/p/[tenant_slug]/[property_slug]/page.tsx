@@ -11,6 +11,7 @@ type PublicTenant = {
   slug: string;
   tenant_name?: string | null;
   phone?: string | null;
+  whatsapp?: string | null;
   email?: string | null;
   profile_photo_url?: string | null;
   logo_url?: string | null;
@@ -117,7 +118,7 @@ export default async function PropertyLandingPage({
   if (!data) notFound();
 
   const { tenant, property } = data;
-  const whatsappPhone = tenant.phone ? sanitizePhoneToWa(tenant.phone) : "";
+  const whatsappPhone = tenant.whatsapp ? sanitizePhoneToWa(tenant.whatsapp) : "";
   const whatsappText = buildWhatsappMessage(property);
   const whatsappUrl = whatsappPhone
     ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappText)}`
