@@ -32,6 +32,7 @@ type Property = {
 
 type WidgetConfig = {
   visualizer_type?: string;
+  orb_size?: number;
   position?: string;
   tooltip_text?: string;
   primary_color?: string;
@@ -368,6 +369,7 @@ export function PropertyLandingClient({
         lang: widgetConfig.lang || 'es',
         position: widgetConfig.position || 'bottom-right',
         visualizerType: widgetConfig.visualizer_type || 'grid',
+        orbSize: typeof widgetConfig.orb_size === 'number' ? widgetConfig.orb_size : 112,
         tooltipText: widgetConfig.tooltip_text || '¿Necesitás ayuda?',
         primaryColor: widgetConfig.primary_color || '',
         secondaryColor: widgetConfig.secondary_color || '',
