@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const WIDGET_ASSET_VERSION = 'livekit-orbs-v2-20260321';
 
 type Property = {
   id: string;
@@ -31,13 +32,18 @@ type Property = {
 
 type WidgetConfig = {
   visualizer_type?: string;
-  orb_variant?: string;
   position?: string;
   tooltip_text?: string;
   primary_color?: string;
   secondary_color?: string;
   auto_disconnect_timeout?: number;
   lang?: string;
+  state_styles?: {
+    connecting?: { hue?: number; shift?: number };
+    listening?: { hue?: number; shift?: number };
+    speaking?: { hue?: number; shift?: number };
+    thinking?: { hue?: number; shift?: number };
+  };
 };
 
 type Tenant = {
@@ -362,10 +368,10 @@ export function PropertyLandingClient({
         lang: widgetConfig.lang || 'es',
         position: widgetConfig.position || 'bottom-right',
         visualizerType: widgetConfig.visualizer_type || 'grid',
-        orbVariant: widgetConfig.orb_variant || 'classic',
         tooltipText: widgetConfig.tooltip_text || '¿Necesitás ayuda?',
         primaryColor: widgetConfig.primary_color || '',
         secondaryColor: widgetConfig.secondary_color || '',
+        stateStyles: widgetConfig.state_styles || undefined,
         autoDisconnectTimeout:
           typeof widgetConfig.auto_disconnect_timeout === 'number'
             ? widgetConfig.auto_disconnect_timeout
@@ -377,7 +383,7 @@ export function PropertyLandingClient({
       const css = document.createElement('link');
       css.id = widgetCssId;
       css.rel = 'stylesheet';
-      css.href = `${BACKEND_URL}/static/widget/assistant-widget.css`;
+      css.href = `${BACKEND_URL}/static/widget/assistant-widget.css?v=${WIDGET_ASSET_VERSION}`;
       document.head.appendChild(css);
     }
 
@@ -391,7 +397,7 @@ export function PropertyLandingClient({
     } else {
       const script = document.createElement('script');
       script.id = widgetScriptId;
-      script.src = `${BACKEND_URL}/static/widget/assistant-widget.js`;
+      script.src = `${BACKEND_URL}/static/widget/assistant-widget.js?v=${WIDGET_ASSET_VERSION}`;
       script.async = true;
       script.onload = initWidget;
       document.body.appendChild(script);
