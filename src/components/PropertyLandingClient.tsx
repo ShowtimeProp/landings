@@ -30,6 +30,7 @@ type Property = {
 };
 
 type WidgetConfig = {
+  visualizer_type?: string;
   orb_variant?: string;
   position?: string;
   tooltip_text?: string;
@@ -360,6 +361,7 @@ export function PropertyLandingClient({
         source: 'landing_page',
         lang: widgetConfig.lang || 'es',
         position: widgetConfig.position || 'bottom-right',
+        visualizerType: widgetConfig.visualizer_type || 'grid',
         orbVariant: widgetConfig.orb_variant || 'classic',
         tooltipText: widgetConfig.tooltip_text || '¿Necesitás ayuda?',
         primaryColor: widgetConfig.primary_color || '',
