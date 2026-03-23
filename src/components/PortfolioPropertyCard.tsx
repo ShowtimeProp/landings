@@ -15,6 +15,10 @@ type PropertyItem = {
   bathrooms?: number | null;
   ambientes?: number | null;
   area_sqm?: number | null;
+  expenses_amount?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  total_units?: number | null;
   price?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
@@ -61,7 +65,7 @@ function FeatureChip({
 
   return (
     <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${chipClass}`}>
-      {value} {label}
+      {label ? `${value} ${label}` : value}
     </span>
   );
 }
@@ -106,6 +110,14 @@ export default function PortfolioPropertyCard({
   const currentImage = imageList[imageIndex] || null;
 
   const price = item.price_on_request ? 'Consultar precio' : formatPrice(item.price, item.currency);
+  const areaRangeLabel =
+    item.area_sqm_min != null && item.area_sqm_max != null
+      ? `${Math.round(item.area_sqm_min)}-${Math.round(item.area_sqm_max)} m²`
+      : item.area_sqm_min != null
+      ? `desde ${Math.round(item.area_sqm_min)} m²`
+      : item.area_sqm_max != null
+      ? `hasta ${Math.round(item.area_sqm_max)} m²`
+      : null;
 
   const navButtonClass = isLight
     ? 'border-zinc-200 bg-white/90 text-zinc-700 hover:bg-white'
@@ -215,7 +227,17 @@ export default function PortfolioPropertyCard({
           {item.ambientes != null && <FeatureChip label="amb" value={item.ambientes} theme={theme} />}
           {item.bedrooms != null && <FeatureChip label="dorm" value={item.bedrooms} theme={theme} />}
           {item.bathrooms != null && <FeatureChip label="baños" value={item.bathrooms} theme={theme} />}
-          {item.area_sqm != null && <FeatureChip label="m²" value={Math.round(item.area_sqm)} theme={theme} />}
+          {areaRangeLabel ? (
+            <FeatureChip label="" value={areaRangeLabel} theme={theme} />
+          ) : item.area_sqm != null ? (
+            <FeatureChip label="m²" value={Math.round(item.area_sqm)} theme={theme} />
+          ) : null}
+          {item.total_units != null && item.total_units > 0 && (
+            <FeatureChip label="unid" value={item.total_units} theme={theme} />
+          )}
+          {item.expenses_amount != null && (
+            <FeatureChip label="exp." value={`${item.currency || 'USD'} ${item.expenses_amount.toLocaleString('es-AR')}`} theme={theme} />
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-1">

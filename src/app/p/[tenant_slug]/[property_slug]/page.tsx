@@ -12,6 +12,7 @@ type PublicTenant = {
   name: string;
   slug: string;
   tenant_name?: string | null;
+  realtor_name?: string | null;
   phone?: string | null;
   whatsapp?: string | null;
   email?: string | null;
@@ -22,6 +23,7 @@ type PublicTenant = {
   martillero_registro?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
+  vcard_qr_data_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
@@ -42,6 +44,10 @@ type PublicProperty = {
   bathrooms?: number | null;
   ambientes?: number | null;
   area_sqm?: number | null;
+  expenses_amount?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  total_units?: number | null;
   price?: number | null;
   currency?: string | null;
   latitude?: number | null;

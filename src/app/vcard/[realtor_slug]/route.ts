@@ -104,7 +104,7 @@ export async function GET(
   const rawParamSlug = String(params.realtor_slug || '').trim();
   const urlPath = new URL(request.url).pathname;
   const rawPathSlug = decodeURIComponent(urlPath.split('/').pop() || '').replace(/\.vcf$/i, '').trim();
-  const normalizedSlug = String(rawParamSlug || rawPathSlug).trim().toLowerCase();
+  const normalizedSlug = String(rawParamSlug || rawPathSlug).trim().toLowerCase().replace(/\.vcf$/i, '');
   if (!normalizedSlug) {
     return new Response('Contacto no encontrado', { status: 404 });
   }

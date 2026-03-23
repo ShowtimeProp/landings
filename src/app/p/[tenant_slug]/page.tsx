@@ -16,6 +16,7 @@ type Tenant = {
   name: string;
   slug: string;
   tenant_name?: string | null;
+  realtor_name?: string | null;
   phone?: string | null;
   whatsapp?: string | null;
   email?: string | null;
@@ -26,6 +27,7 @@ type Tenant = {
   martillero_registro?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
+  vcard_qr_data_url?: string | null;
 };
 
 type PropertyItem = {
@@ -38,6 +40,10 @@ type PropertyItem = {
   bathrooms?: number | null;
   ambientes?: number | null;
   area_sqm?: number | null;
+  expenses_amount?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  total_units?: number | null;
   price?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
@@ -215,7 +221,10 @@ export default async function PortfolioPage({
   const { tenant, properties } = data;
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name);
-  const contactName = tenant.tenant_name || tenant.name;
+  const contactName =
+    String(tenant.realtor_name || '').trim() ||
+    String(tenant.tenant_name || '').trim() ||
+    tenant.name;
   const vcardUrl =
     String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
   const hasReviewsContent = Boolean(
@@ -353,7 +362,7 @@ export default async function PortfolioPage({
 
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-14 w-14 items-center justify-center overflow-hidden rounded-full ${
+                className={`flex h-20 w-20 items-center justify-center overflow-hidden rounded-full ${
                   isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
                 }`}
               >

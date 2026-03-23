@@ -25,6 +25,10 @@ type Property = {
   bathrooms?: number | null;
   ambientes?: number | null;
   area_sqm?: number | null;
+  expenses_amount?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  total_units?: number | null;
   price?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
@@ -56,6 +60,7 @@ type Tenant = {
   name: string;
   slug: string;
   tenant_name?: string | null;
+  realtor_name?: string | null;
   phone?: string | null;
   email?: string | null;
   profile_photo_url?: string | null;
@@ -65,6 +70,7 @@ type Tenant = {
   martillero_registro?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
+  vcard_qr_data_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
@@ -294,12 +300,25 @@ export function PropertyLandingClient({
     property.name ||
     fullAddress ||
     '';
-  const contactName = tenant.tenant_name || tenant.name;
-  const businessName =
-    tenant.tenant_name && tenant.tenant_name !== tenant.name ? tenant.name : null;
+  const contactName =
+    String(tenant.realtor_name || '').trim() ||
+    String(tenant.tenant_name || '').trim() ||
+    tenant.name;
+  const businessName = String(tenant.name || '').trim();
   const martilleroName = String(tenant.martillero_responsable || '').trim();
   const martilleroReg = String(tenant.martillero_registro || '').trim();
   const vcardUrl = String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
+  const vcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
+  const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
+  const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
+  const areaRangeLabel =
+    areaSqsMin != null && areaSqsMax != null
+      ? `${areaSqsMin} - ${areaSqsMax} m²`
+      : areaSqsMin != null
+      ? `Desde ${areaSqsMin} m²`
+      : areaSqsMax != null
+      ? `Hasta ${areaSqsMax} m²`
+      : null;
   const mapQuery =
     property.latitude != null && property.longitude != null
       ? `${property.latitude},${property.longitude}`
@@ -622,11 +641,34 @@ export function PropertyLandingClient({
                 themeMode={themeMode}
               />
             )}
-            {property.area_sqm != null && (
+            {areaRangeLabel ? (
+              <InfoCard
+                icon="area"
+                label="SUPERFICIE"
+                value={areaRangeLabel}
+                themeMode={themeMode}
+              />
+            ) : property.area_sqm != null ? (
               <InfoCard
                 icon="area"
                 label="SUPERFICIE"
                 value={`${property.area_sqm} m²`}
+                themeMode={themeMode}
+              />
+            ) : null}
+            {property.total_units != null && property.total_units > 0 && (
+              <InfoCard
+                icon="rooms"
+                label="TOTAL UNIDADES"
+                value={String(property.total_units)}
+                themeMode={themeMode}
+              />
+            )}
+            {property.expenses_amount != null && (
+              <InfoCard
+                icon="price"
+                label="EXPENSAS"
+                value={`${property.currency || 'USD'} ${property.expenses_amount.toLocaleString('es-AR')}`}
                 themeMode={themeMode}
               />
             )}
@@ -902,77 +944,97 @@ export function PropertyLandingClient({
           data-reveal-id="contact"
           className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('contact')}`}
         >
-          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:shadow-[0_0_28px_rgba(56,189,248,0.18)] dark:border-zinc-700 dark:shadow-[0_12px_32px_rgba(0,0,0,0.42)] sm:flex-row sm:items-center">
-            <div className="flex min-w-[180px] flex-col items-center text-center sm:items-start sm:text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Tu asesor:
-              </p>
-              <p className="mt-1 text-base font-semibold">{contactName}</p>
-              <div className="mt-3 flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
-                {tenant.profile_photo_url ? (
-                  <img
-                    src={tenant.profile_photo_url}
-                    alt={contactName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-semibold text-zinc-500">
-                    {contactName.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              {(martilleroName || martilleroReg) && (
-                <p className="mt-2 max-w-[180px] text-[10px] leading-tight text-zinc-500 dark:text-zinc-400">
-                  Martillero Responsable: {martilleroName || 'No informado'} {martilleroReg ? `Reg. ${martilleroReg}` : ''}
+          <div className="rounded-xl border border-zinc-200 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:shadow-[0_0_28px_rgba(56,189,248,0.18)] dark:border-zinc-700 dark:shadow-[0_12px_32px_rgba(0,0,0,0.42)]">
+            <div className="grid gap-8 lg:grid-cols-[1.25fr_0.95fr_1fr_auto] lg:items-center">
+              <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Tu asesor:
                 </p>
-              )}
+                <p className="mt-1 text-lg font-semibold">{contactName}</p>
+                <div className="mt-3 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+                  {tenant.profile_photo_url ? (
+                    <img
+                      src={tenant.profile_photo_url}
+                      alt={contactName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-semibold text-zinc-500">
+                      {contactName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {tenant.phone && (
+                  <a href={`tel:${tenant.phone}`} className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                    {tenant.phone}
+                  </a>
+                )}
+                {tenant.email && (
+                  <a href={`mailto:${tenant.email}`} className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {tenant.email}
+                  </a>
+                )}
+                <TenantSocialLinks links={tenant.social_links} themeMode={themeMode} className="mt-3" />
+              </div>
+
               {vcardUrl && (
-                <a
-                  href={vcardUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Agenda mis datos"
-                  className="mt-2 inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-300/20 dark:text-cyan-200"
-                >
-                  Agenda mis datos (.vcf)
-                </a>
-              )}
-              {tenant.logo_url && (
-                <div className="mt-3 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                  <img
-                    src={tenant.logo_url}
-                    alt={tenant.name}
-                    className="h-full w-full object-contain"
-                  />
+                <div className="flex flex-col items-center text-center">
+                  <a
+                    href={vcardUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Agenda Mis Datos"
+                    className="group inline-flex flex-col items-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 p-3 transition hover:border-cyan-300/65 hover:bg-cyan-300/15"
+                  >
+                    {vcardQrDataUrl ? (
+                      <img
+                        src={vcardQrDataUrl}
+                        alt="QR Agenda Mis Datos"
+                        className="h-36 w-36 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+                      />
+                    ) : (
+                      <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
+                        Agenda Mis Datos
+                      </div>
+                    )}
+                    <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
+                      Agenda Mis Datos
+                    </span>
+                  </a>
                 </div>
               )}
-            </div>
-            <div className="flex-1">
-              {businessName && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">{businessName}</p>
-              )}
-              {tenant.phone && (
-                <a href={`tel:${tenant.phone}`} className="mt-2 block text-sm text-zinc-600 dark:text-zinc-400">
-                  {tenant.phone}
+
+              <div className="flex flex-col items-center text-center">
+                {businessName && (
+                  <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">{businessName}</p>
+                )}
+                {tenant.logo_url && (
+                  <div className="mt-3 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
+                    <img
+                      src={tenant.logo_url}
+                      alt={tenant.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
+                {(martilleroName || martilleroReg) && (
+                  <p className="mt-3 max-w-[260px] text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+                    Martillero Responsable: {martilleroName || 'No informado'} {martilleroReg ? `Reg. ${martilleroReg}` : ''}
+                  </p>
+                )}
+              </div>
+
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
+                >
+                  WhatsApp
                 </a>
               )}
-              {tenant.email && (
-                <a href={`mailto:${tenant.email}`} className="block text-sm text-zinc-600 dark:text-zinc-400">
-                  {tenant.email}
-                </a>
-              )}
-              <TenantSocialLinks links={tenant.social_links} themeMode={themeMode} className="mt-3" />
             </div>
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
-              >
-                WhatsApp
-              </a>
-            )}
           </div>
         </section>
         <section className="mx-auto max-w-5xl px-4 pb-3 sm:px-6">
