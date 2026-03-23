@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createElement } from 'react';
+import Script from 'next/script';
+import ShareRail from '@/components/ShareRail';
+import { TenantSocialLinks } from '@/components/social-links';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const WIDGET_ASSET_VERSION = 'livekit-orbs-v3-20260321';
@@ -56,6 +60,11 @@ type Tenant = {
   email?: string | null;
   profile_photo_url?: string | null;
   logo_url?: string | null;
+  social_links?: Record<string, string> | null;
+  martillero_responsable?: string | null;
+  martillero_registro?: string | null;
+  vcard_slug?: string | null;
+  vcard_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
@@ -107,6 +116,8 @@ function cloudinaryLarge(url: string): string {
 
 const DISCLAIMER =
   'La información gráfica, escrita e imágenes en el presente aviso son ilustrativas y a título estimativo. Las mismas no forman parte de ningún tipo de documentación contractual. Las medidas y superficies definitivas surgirán del título de propiedad del inmueble referido.';
+const LEGAL_DISCLAIMER =
+  '📄 Disclaimer Showtime Prop no ejerce el corretaje inmobiliario. El presente sitio web es una plataforma tecnológica de marketing inmobiliario donde inmobiliarias, desarrolladoras y agentes independientes pueden promocionar propiedades y gestionar consultas mediante herramientas digitales y sistemas basados en inteligencia artificial. Cada cliente es de propiedad y gestión independiente, por lo que Showtime Prop: no interviene en los datos de las publicaciones, no participa en operaciones inmobiliarias, no interviene en la negociación, reserva, boleto de compraventa, escritura ni contratos de alquiler. En cumplimiento de la normativa vigente, todas las operaciones inmobiliarias son realizadas exclusivamente por el corredor público inmobiliario matriculado responsable de cada propiedad, cuyos datos deben ser consultados directamente. La información publicada (incluyendo medidas, características, precios, expensas, servicios e impuestos) es provista por terceros, pudiendo estar sujeta a modificaciones y tener carácter orientativo.';
 
 function safeAddressPart(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -143,7 +154,7 @@ function normalizeThemeMode(raw: string | null | undefined): ThemeMode {
 }
 
 function getInitialThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   try {
     const storedMode = window.localStorage.getItem('landing-theme-mode');
     if (storedMode) return normalizeThemeMode(storedMode);
@@ -153,7 +164,7 @@ function getInitialThemeMode(): ThemeMode {
   } catch {
     // ignore localStorage errors
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'dark';
 }
 
 export function PropertyLandingClient({
@@ -286,6 +297,9 @@ export function PropertyLandingClient({
   const contactName = tenant.tenant_name || tenant.name;
   const businessName =
     tenant.tenant_name && tenant.tenant_name !== tenant.name ? tenant.name : null;
+  const martilleroName = String(tenant.martillero_responsable || '').trim();
+  const martilleroReg = String(tenant.martillero_registro || '').trim();
+  const vcardUrl = String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
   const mapQuery =
     property.latitude != null && property.longitude != null
       ? `${property.latitude},${property.longitude}`
@@ -294,7 +308,7 @@ export function PropertyLandingClient({
     ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}`
     : '';
   const googleMapsEmbedUrl = mapQuery
-    ? `${googleMapsUrl}&z=15&output=embed`
+    ? `${googleMapsUrl}&z=17&output=embed`
     : '';
 
   const presentationText = `La oficina virtual de ${tenant.name} comercializa ${propType.toLowerCase()} en ${addr?.city || 'la zona'}. Descubrí cada detalle en su visita virtual y viví una experiencia única.`;
@@ -418,8 +432,14 @@ export function PropertyLandingClient({
           : isSoft
           ? 'bg-slate-900 text-zinc-100'
           : 'bg-zinc-950 text-zinc-100'
-      }`}
+        }`}
     >
+      <Script
+        src="/vendor/lottie-player.js"
+        strategy="afterInteractive"
+      />
+      <ShareRail themeMode={themeMode} shareTitle={`${property.name} | ${tenant.name}`} />
+
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
@@ -529,37 +549,23 @@ export function PropertyLandingClient({
           <div className="pointer-events-none relative z-10 -mt-24 flex justify-center px-4 sm:px-6">
             <a
               href="#property-overview"
-              className="pointer-events-auto inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-transparent text-white shadow-[0_12px_34px_rgba(0,0,0,0.50)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(0,0,0,0.56)]"
+              className="pointer-events-auto inline-flex min-h-[92px] min-w-[96px] flex-col items-center justify-center gap-1 rounded-2xl border border-white/55 bg-black/32 px-4 py-3 text-white shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/70 hover:shadow-[0_20px_48px_rgba(0,0,0,0.62)]"
               aria-label="Ir al detalle de la propiedad"
             >
-              <span className="sr-only">Bajar al detalle</span>
-              <span className="relative flex h-8 w-8 items-center justify-center">
-                <svg
-                  className="absolute h-6 w-6 animate-bounce opacity-95 [animation-duration:1.5s]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 9l6 6 6-6"
-                  />
-                </svg>
-                <svg
-                  className="absolute mt-2 h-6 w-6 animate-bounce opacity-55 [animation-delay:180ms] [animation-duration:1.5s]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 9l6 6 6-6"
-                  />
-                </svg>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-100/95">
+                DESLIZAR
+              </span>
+              <span className="relative block h-9 w-9">
+                {createElement('lottie-player', {
+                  src: '/scroll-down.json',
+                  background: 'transparent',
+                  speed: '1',
+                  loop: true,
+                  autoplay: true,
+                  class: 'h-9 w-9 opacity-95',
+                  style: { pointerEvents: 'none' },
+                  'aria-hidden': 'true',
+                })}
               </span>
             </a>
           </div>
@@ -644,7 +650,7 @@ export function PropertyLandingClient({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white transition hover:bg-green-700"
+                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
               >
                 Consultar por WhatsApp
               </a>
@@ -652,7 +658,7 @@ export function PropertyLandingClient({
             {tenant.email && (
               <a
                 href={`mailto:${tenant.email}`}
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-5 py-2.5 font-medium transition hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-100/80 px-5 py-2.5 font-medium text-zinc-900 shadow-[0_0_14px_rgba(148,163,184,0.24)] transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-zinc-950 hover:shadow-[0_0_24px_rgba(56,189,248,0.35)] dark:border-zinc-500 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
               >
                 Enviar email
               </a>
@@ -894,42 +900,54 @@ export function PropertyLandingClient({
 
         <section
           data-reveal-id="contact"
-          className={`mx-auto max-w-4xl px-4 py-12 sm:px-6 ${revealClass('contact')}`}
+          className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('contact')}`}
         >
-          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-4">
-              <div className="space-y-2 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Tu asesor
-                </p>
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  {tenant.profile_photo_url ? (
-                    <img
-                      src={tenant.profile_photo_url}
-                      alt={contactName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-2xl font-semibold text-zinc-500">
-                      {contactName.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
+          <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:shadow-[0_0_28px_rgba(56,189,248,0.18)] dark:border-zinc-700 dark:shadow-[0_12px_32px_rgba(0,0,0,0.42)] sm:flex-row sm:items-center">
+            <div className="flex min-w-[180px] flex-col items-center text-center sm:items-start sm:text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Tu asesor:
+              </p>
+              <p className="mt-1 text-base font-semibold">{contactName}</p>
+              <div className="mt-3 flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+                {tenant.profile_photo_url ? (
+                  <img
+                    src={tenant.profile_photo_url}
+                    alt={contactName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl font-semibold text-zinc-500">
+                    {contactName.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
+              {(martilleroName || martilleroReg) && (
+                <p className="mt-2 max-w-[180px] text-[10px] leading-tight text-zinc-500 dark:text-zinc-400">
+                  Martillero Responsable: {martilleroName || 'No informado'} {martilleroReg ? `Reg. ${martilleroReg}` : ''}
+                </p>
+              )}
+              {vcardUrl && (
+                <a
+                  href={vcardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Agenda mis datos"
+                  className="mt-2 inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-300/20 dark:text-cyan-200"
+                >
+                  Agenda mis datos (.vcf)
+                </a>
+              )}
               {tenant.logo_url && (
-                <div className="space-y-2 text-center">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                    <img
-                      src={tenant.logo_url}
-                      alt={tenant.name}
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
+                <div className="mt-3 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                  <img
+                    src={tenant.logo_url}
+                    alt={tenant.name}
+                    className="h-full w-full object-contain"
+                  />
                 </div>
               )}
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">{contactName}</h3>
               {businessName && (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{businessName}</p>
               )}
@@ -943,18 +961,24 @@ export function PropertyLandingClient({
                   {tenant.email}
                 </a>
               )}
+              <TenantSocialLinks links={tenant.social_links} themeMode={themeMode} className="mt-3" />
             </div>
             {whatsappUrl && (
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white transition hover:bg-green-700"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
               >
                 WhatsApp
               </a>
             )}
           </div>
+        </section>
+        <section className="mx-auto max-w-5xl px-4 pb-3 sm:px-6">
+          <p className="text-[10px] leading-relaxed text-zinc-500 dark:text-zinc-500">
+            {LEGAL_DISCLAIMER}
+          </p>
         </section>
         <footer className="border-t border-zinc-200 px-4 py-6 dark:border-zinc-800 sm:px-6">
           <div className="mx-auto max-w-4xl">
@@ -993,12 +1017,12 @@ function InfoCard({
 }) {
   const cardClass =
     themeMode === 'light'
-      ? 'border-zinc-200 bg-zinc-50'
+      ? 'border-zinc-200 bg-zinc-50 shadow-[0_10px_26px_rgba(15,23,42,0.06)] hover:border-cyan-400/35 hover:shadow-[0_0_22px_rgba(56,189,248,0.20)]'
       : themeMode === 'soft'
-      ? 'border-slate-500/55 bg-slate-800/55'
-      : 'border-zinc-700 bg-zinc-900/50';
+      ? 'border-slate-500/55 bg-slate-800/55 shadow-[0_10px_28px_rgba(2,6,23,0.30)] hover:border-cyan-300/45 hover:shadow-[0_0_26px_rgba(34,211,238,0.22)]'
+      : 'border-zinc-700/95 bg-zinc-900/55 shadow-[0_12px_34px_rgba(0,0,0,0.44)] hover:border-cyan-400/45 hover:shadow-[0_0_30px_rgba(34,211,238,0.22)]';
   return (
-    <div className={`rounded-xl border p-4 transition ${cardClass}`}>
+    <div className={`rounded-xl border p-4 transition duration-300 hover:-translate-y-0.5 ${cardClass}`}>
       <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
         {label}
       </div>

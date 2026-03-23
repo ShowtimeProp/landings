@@ -3,9 +3,13 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
+import ShareRail from '@/components/ShareRail';
+import { TenantSocialLinks } from '@/components/social-links';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const LANDINGS_URL =
+  process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
 
 type Tenant = {
   id: string;
@@ -17,6 +21,11 @@ type Tenant = {
   email?: string | null;
   profile_photo_url?: string | null;
   logo_url?: string | null;
+  social_links?: Record<string, string> | null;
+  martillero_responsable?: string | null;
+  martillero_registro?: string | null;
+  vcard_slug?: string | null;
+  vcard_url?: string | null;
 };
 
 type PropertyItem = {
@@ -61,6 +70,8 @@ type PlaceReviewsResponse = {
 };
 
 type PortfolioTheme = 'dark' | 'soft' | 'light';
+const LEGAL_DISCLAIMER =
+  '📄 Disclaimer Showtime Prop no ejerce el corretaje inmobiliario. El presente sitio web es una plataforma tecnológica de marketing inmobiliario donde inmobiliarias, desarrolladoras y agentes independientes pueden promocionar propiedades y gestionar consultas mediante herramientas digitales y sistemas basados en inteligencia artificial. Cada cliente es de propiedad y gestión independiente, por lo que Showtime Prop: no interviene en los datos de las publicaciones, no participa en operaciones inmobiliarias, no interviene en la negociación, reserva, boleto de compraventa, escritura ni contratos de alquiler. En cumplimiento de la normativa vigente, todas las operaciones inmobiliarias son realizadas exclusivamente por el corredor público inmobiliario matriculado responsable de cada propiedad, cuyos datos deben ser consultados directamente. La información publicada (incluyendo medidas, características, precios, expensas, servicios e impuestos) es provista por terceros, pudiendo estar sujeta a modificaciones y tener carácter orientativo.';
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   apartment: 'Departamento',
@@ -124,6 +135,24 @@ function getWhatsappUrl(phone?: string | null, tenantName?: string): string | nu
   return `https://wa.me/${digits}?text=${message}`;
 }
 
+function getImageUrl(img: unknown): string {
+  if (!img) return '';
+  if (typeof img === 'string') return img;
+  if (typeof img === 'object' && img !== null && 'url' in (img as Record<string, unknown>)) {
+    const value = (img as { url?: unknown }).url;
+    return typeof value === 'string' ? value : '';
+  }
+  return '';
+}
+
+function pickPortfolioImage(data: ApiResponse): string | null {
+  for (const property of data.properties || []) {
+    const image = (property.images || []).map(getImageUrl).find(Boolean);
+    if (image) return image;
+  }
+  return data.tenant.logo_url || data.tenant.profile_photo_url || null;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -134,9 +163,39 @@ export async function generateMetadata({
   if (!data) {
     return { title: 'Portfolio no encontrado | ShowtimeProp' };
   }
+  const title = `Portfolio | ${data.tenant.name}`;
+  const description = `Propiedades de ${data.tenant.name}`;
+  const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}`;
+  const ogImage = pickPortfolioImage(data);
+
   return {
-    title: `Portfolio | ${data.tenant.name}`,
-    description: `Propiedades de ${data.tenant.name}`,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: ogImage ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
+    },
   };
 }
 
@@ -157,6 +216,8 @@ export default async function PortfolioPage({
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name);
   const contactName = tenant.tenant_name || tenant.name;
+  const vcardUrl =
+    String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
   const hasReviewsContent = Boolean(
     placeReviews &&
       (placeReviews.rating != null ||
@@ -208,6 +269,7 @@ export default async function PortfolioPage({
   return (
     <div className={`min-h-screen ${rootClass}`}>
       <PortfolioWidgetGuard />
+      <ShareRail themeMode={theme} shareTitle={`Portfolio de ${tenant.name}`} />
       <div className={`pointer-events-none fixed inset-0 -z-10 ${overlayClass}`} />
 
       <header className={`border-b backdrop-blur-md ${headerClass}`}>
@@ -323,7 +385,23 @@ export default async function PortfolioPage({
                       Email
                     </a>
                   )}
+                  {vcardUrl && (
+                    <a
+                      href={vcardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Agenda mis datos"
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                        isLight
+                          ? 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                          : 'border-cyan-300/35 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25'
+                      }`}
+                    >
+                      Agenda mis datos
+                    </a>
+                  )}
                 </div>
+                <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="pt-1" />
               </div>
             </div>
           </div>
@@ -422,8 +500,14 @@ export default async function PortfolioPage({
           )}
         </section>
 
+        <section className={`mt-10 border-t pt-4 ${isLight ? 'border-zinc-200' : 'border-white/10'}`}>
+          <p className={`text-[10px] leading-relaxed ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            {LEGAL_DISCLAIMER}
+          </p>
+        </section>
+
         <footer
-          className={`mt-12 border-t pt-6 text-center text-xs ${
+          className={`mt-8 border-t pt-6 text-center text-xs ${
             isLight ? 'border-zinc-200 text-zinc-600' : 'border-white/10 text-zinc-400'
           }`}
         >

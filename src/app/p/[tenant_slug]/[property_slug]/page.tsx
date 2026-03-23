@@ -4,6 +4,8 @@ import { PropertyLandingClient } from "@/components/PropertyLandingClient";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
+const LANDINGS_URL =
+  process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || "https://landings.showtimeprop.com";
 
 type PublicTenant = {
   id: string;
@@ -15,6 +17,11 @@ type PublicTenant = {
   email?: string | null;
   profile_photo_url?: string | null;
   logo_url?: string | null;
+  social_links?: Record<string, string> | null;
+  martillero_responsable?: string | null;
+  martillero_registro?: string | null;
+  vcard_slug?: string | null;
+  vcard_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
@@ -48,6 +55,16 @@ type ApiResponse = {
   tenant: PublicTenant;
   property: PublicProperty;
 };
+
+function getImageUrl(img: string | { url?: string } | null | undefined): string {
+  if (!img) return "";
+  return typeof img === "string" ? img : img.url || "";
+}
+
+function pickPrimaryImage(property: PublicProperty): string | null {
+  const image = (property.images || []).map((img) => getImageUrl(img as string | { url?: string })).find(Boolean);
+  return image || null;
+}
 
 function sanitizePhoneToWa(phone: string) {
   return phone.replace(/[^\d]/g, "");
@@ -96,14 +113,36 @@ export async function generateMetadata({
   const description =
     (data.property.description || "").slice(0, 155) ||
     "Tour virtual y detalles de la propiedad.";
+  const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}/${property_slug}`;
+  const ogImage = pickPrimaryImage(data.property);
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
       type: "website",
+      url: canonicalUrl,
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
