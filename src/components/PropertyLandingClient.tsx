@@ -200,6 +200,12 @@ export function PropertyLandingClient({
   const isSoft = themeMode === 'soft';
   const isDark = themeMode === 'dark';
   const darkFamilyMode = !isLight;
+  const interactiveCardClass =
+    themeMode === 'light'
+      ? 'border-zinc-200 bg-zinc-50 shadow-[0_10px_26px_rgba(15,23,42,0.06)] hover:border-cyan-400/35 hover:shadow-[0_0_22px_rgba(56,189,248,0.20)]'
+      : themeMode === 'soft'
+      ? 'border-slate-500/55 bg-slate-800/55 shadow-[0_10px_28px_rgba(2,6,23,0.30)] hover:border-cyan-300/45 hover:shadow-[0_0_26px_rgba(34,211,238,0.22)]'
+      : 'border-zinc-700/95 bg-zinc-900/55 shadow-[0_12px_34px_rgba(0,0,0,0.44)] hover:border-cyan-400/45 hover:shadow-[0_0_30px_rgba(34,211,238,0.22)]';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -286,6 +292,9 @@ export function PropertyLandingClient({
   const images = (property.images || [])
     .map(getImageUrl)
     .filter(Boolean) as string[];
+  const featuredImage = images[0] || null;
+  const sideImages = images.slice(1, 3).map((url, offset) => ({ url, index: offset + 1 }));
+  const remainingGalleryImages = images.slice(3).map((url, offset) => ({ url, index: offset + 3 }));
   const heroHasMedia = hasTourVirtual || images.length > 0;
 
   const opLabel =
@@ -751,21 +760,59 @@ export function PropertyLandingClient({
             className={`mx-auto max-w-6xl px-4 py-12 sm:px-6 ${revealClass('gallery')}`}
           >
             <h2 className="mb-6 text-2xl font-bold">Galería</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {images.map((url, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setGalleryIndex(i)}
-                  className="group aspect-[4/3] overflow-hidden rounded-lg border border-transparent shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:hover:border-zinc-700"
-                >
-                  <img
-                    src={cloudinaryThumb(url)}
-                    alt={`Foto ${i + 1}`}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                </button>
-              ))}
+            <div className="space-y-3">
+              {featuredImage && (
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                  <button
+                    type="button"
+                    onClick={() => setGalleryIndex(0)}
+                    className="group aspect-[4/3] overflow-hidden rounded-xl border border-transparent shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:hover:border-zinc-700 lg:aspect-auto lg:min-h-[26rem]"
+                  >
+                    <img
+                      src={cloudinaryLarge(featuredImage)}
+                      alt="Foto 1"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </button>
+                  {sideImages.length > 0 && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                      {sideImages.map(({ url, index }) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setGalleryIndex(index)}
+                          className="group aspect-[4/3] overflow-hidden rounded-xl border border-transparent shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:hover:border-zinc-700"
+                        >
+                          <img
+                            src={cloudinaryLarge(url)}
+                            alt={`Foto ${index + 1}`}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {remainingGalleryImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {remainingGalleryImages.map(({ url, index }) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setGalleryIndex(index)}
+                      className="group aspect-[4/3] overflow-hidden rounded-xl border border-transparent shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:hover:border-zinc-700"
+                    >
+                      <img
+                        src={cloudinaryThumb(url)}
+                        alt={`Foto ${index + 1}`}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -850,7 +897,9 @@ export function PropertyLandingClient({
             className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('location')}`}
           >
             <h2 className="mb-6 text-2xl font-bold">Ubicación</h2>
-            <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
+            <div
+              className={`aspect-video overflow-hidden rounded-xl border transition duration-300 hover:-translate-y-0.5 ${interactiveCardClass}`}
+            >
               <iframe
                 title="Mapa"
                 src={googleMapsEmbedUrl}
@@ -883,7 +932,9 @@ export function PropertyLandingClient({
             className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('video')}`}
           >
             <h2 className="mb-6 text-2xl font-bold">Video</h2>
-            <div className="aspect-video overflow-hidden rounded-xl border border-zinc-200 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
+            <div
+              className={`aspect-video overflow-hidden rounded-xl border transition duration-300 hover:-translate-y-0.5 ${interactiveCardClass}`}
+            >
               <VideoEmbed url={property.video_url} />
             </div>
           </section>
@@ -981,7 +1032,9 @@ export function PropertyLandingClient({
           data-reveal-id="contact"
           className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('contact')}`}
         >
-          <div className="rounded-xl border border-zinc-200 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:shadow-[0_0_28px_rgba(56,189,248,0.18)] dark:border-zinc-700 dark:shadow-[0_12px_32px_rgba(0,0,0,0.42)]">
+          <div
+            className={`rounded-xl border p-6 transition duration-300 hover:-translate-y-0.5 ${interactiveCardClass}`}
+          >
             <div className="grid gap-8 lg:grid-cols-[1.25fr_0.95fr_1fr_auto] lg:items-center">
               <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">

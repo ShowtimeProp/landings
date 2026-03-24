@@ -141,13 +141,16 @@ export default function ShareRail({
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition duration-300 ${iconClass} ${action.hoverColorClass}`}
               >
                 {action.key === 'copy' ? (
-                  <CopyGlyph />
+                  <CopyGlyph className="h-5 w-5" />
                 ) : action.key === 'whatsapp' ? (
-                  <WhatsappGlyph />
+                  <WhatsappGlyph className="h-5 w-5" />
                 ) : action.key === 'x' ? (
-                  <SocialNetworkIcon network="x" />
+                  <SocialNetworkIcon network="x" className="h-5 w-5" />
                 ) : (
-                  <SocialNetworkIcon network={action.key as 'telegram' | 'facebook' | 'linkedin'} />
+                  <SocialNetworkIcon
+                    network={action.key as 'telegram' | 'facebook' | 'linkedin'}
+                    className="h-5 w-5"
+                  />
                 )}
               </button>
             ))}
@@ -163,9 +166,13 @@ export default function ShareRail({
           type="button"
           onClick={() => setOpen((prev) => !prev)}
           aria-label={open ? 'Cerrar compartir' : 'Abrir compartir'}
-          className={`inline-flex h-11 w-11 items-center justify-center rounded-r-xl border border-l-0 shadow-xl transition ${iconClass}`}
+          title="Compartir"
+          className="group relative inline-flex h-11 w-11 items-center justify-center rounded-r-xl border border-l-0 border-green-600 bg-green-600 text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:bg-green-500 hover:border-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
         >
-          <ShareGlyph />
+          <ShareGlyph className="h-5 w-5" />
+          <span className="pointer-events-none absolute left-full ml-2 rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white opacity-0 shadow-lg transition duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+            Compartir
+          </span>
         </button>
       </div>
     </div>
