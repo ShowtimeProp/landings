@@ -5,6 +5,7 @@ import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 import ShareRail from '@/components/ShareRail';
 import { TenantSocialLinks } from '@/components/social-links';
+import QRCode from 'qrcode';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -227,6 +228,22 @@ export default async function PortfolioPage({
     tenant.name;
   const vcardUrl =
     String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
+  let portfolioVcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
+  if (!portfolioVcardQrDataUrl && vcardUrl) {
+    try {
+      portfolioVcardQrDataUrl = await QRCode.toDataURL(vcardUrl, {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 320,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffffff',
+        },
+      });
+    } catch {
+      portfolioVcardQrDataUrl = '';
+    }
+  }
   const hasReviewsContent = Boolean(
     placeReviews &&
       (placeReviews.rating != null ||
@@ -360,7 +377,7 @@ export default async function PortfolioPage({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div
                 className={`flex h-20 w-20 items-center justify-center overflow-hidden rounded-full ${
                   isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
@@ -394,24 +411,35 @@ export default async function PortfolioPage({
                       Email
                     </a>
                   )}
-                  {vcardUrl && (
-                    <a
-                      href={vcardUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Agenda mis datos"
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                        isLight
-                          ? 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
-                          : 'border-cyan-300/35 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25'
-                      }`}
-                    >
-                      Agenda mis datos
-                    </a>
-                  )}
                 </div>
                 <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="pt-1" />
               </div>
+              {vcardUrl && (
+                <a
+                  href={vcardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Agenda mis datos"
+                  className={`group inline-flex flex-col items-center rounded-xl border p-1.5 transition ${
+                    isLight
+                      ? 'border-cyan-300/80 bg-cyan-50/90 hover:border-cyan-400 hover:bg-cyan-100'
+                      : 'border-cyan-300/35 bg-cyan-400/10 hover:border-cyan-300/60 hover:bg-cyan-300/15'
+                  }`}
+                >
+                  {portfolioVcardQrDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={portfolioVcardQrDataUrl}
+                      alt="QR Agenda mis datos"
+                      className="h-20 w-20 rounded-lg bg-white p-1 object-contain shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-white text-[10px] text-zinc-500">
+                      E-Card
+                    </div>
+                  )}
+                </a>
+              )}
             </div>
           </div>
         </section>

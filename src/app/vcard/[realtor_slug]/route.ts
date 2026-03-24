@@ -1,5 +1,8 @@
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const MAX_EMBEDDED_PHOTO_BYTES = 512 * 1024;
+
+export const runtime = 'nodejs';
 
 type VCardTenant = {
   name: string;
@@ -23,6 +26,18 @@ type VCardApiResponse = {
   business_name?: string | null;
   portfolio_url?: string | null;
 };
+
+function foldVcardLine(line: string): string {
+  if (line.length <= 75) return line;
+  let out = '';
+  let cursor = 0;
+  while (cursor < line.length) {
+    const chunk = line.slice(cursor, cursor + 75);
+    out += cursor === 0 ? chunk : `\r\n ${chunk}`;
+    cursor += 75;
+  }
+  return out;
+}
 
 function escVcard(raw: unknown): string {
   const value = String(raw || '');
@@ -56,7 +71,35 @@ function splitName(fullName: string): { first: string; last: string } {
   };
 }
 
-function buildVcardText(data: VCardApiResponse): string {
+function resolvePhotoType(contentType: string): string {
+  const type = contentType.toLowerCase();
+  if (type.includes('png')) return 'PNG';
+  if (type.includes('gif')) return 'GIF';
+  if (type.includes('webp')) return 'WEBP';
+  return 'JPEG';
+}
+
+async function buildEmbeddedPhotoLine(photoUrl: string): Promise<string | null> {
+  if (!photoUrl) return null;
+  try {
+    const photoResponse = await fetch(photoUrl, { next: { revalidate: 86400 } });
+    if (!photoResponse.ok) return null;
+
+    const contentType = String(photoResponse.headers.get('content-type') || '').trim();
+    if (!contentType.toLowerCase().startsWith('image/')) return null;
+
+    const bytes = await photoResponse.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > MAX_EMBEDDED_PHOTO_BYTES) return null;
+
+    const encoded = Buffer.from(bytes).toString('base64');
+    const photoType = resolvePhotoType(contentType);
+    return `PHOTO;ENCODING=b;TYPE=${photoType}:${encoded}`;
+  } catch {
+    return null;
+  }
+}
+
+async function buildVcardText(data: VCardApiResponse): Promise<string> {
   const tenant = data.tenant;
   const contactName = String(data.contact_name || tenant.name || 'Realtor').trim();
   const businessName = String(data.business_name || tenant.name || '').trim();
@@ -73,27 +116,48 @@ function buildVcardText(data: VCardApiResponse): string {
   if (legalTitle) lines.push(`TITLE:${escVcard(`Martillero Responsable: ${legalTitle}`)}`);
   if (legalReg) lines.push(`NOTE:${escVcard(`Reg. ${legalReg}`)}`);
 
-  const mobilePhone = normalizePhone(tenant.whatsapp || tenant.phone);
-  const workPhone = normalizePhone(tenant.phone);
-  if (mobilePhone) lines.push(`TEL;TYPE=CELL:${escVcard(mobilePhone)}`);
-  if (workPhone && workPhone !== mobilePhone) lines.push(`TEL;TYPE=WORK,VOICE:${escVcard(workPhone)}`);
+  const commercialPhone = normalizePhone(tenant.whatsapp || tenant.phone);
+  const privatePhone = normalizePhone(tenant.phone);
+  if (commercialPhone) {
+    lines.push(`item1.TEL;TYPE=WORK,VOICE:${escVcard(commercialPhone)}`);
+    lines.push(`item1.X-ABLabel:${escVcard('Comercial / Asistente 🤖')}`);
+  }
+  if (privatePhone && privatePhone !== commercialPhone) {
+    lines.push(`item2.TEL;TYPE=CELL,VOICE:${escVcard(privatePhone)}`);
+    lines.push(`item2.X-ABLabel:${escVcard('Numero Privado')}`);
+  }
 
   const email = String(tenant.email || '').trim();
   if (email) lines.push(`EMAIL;TYPE=INTERNET:${escVcard(email)}`);
 
-  if (data.portfolio_url) lines.push(`URL;TYPE=WORK:${escVcard(data.portfolio_url)}`);
-  if (tenant.vcard_url) lines.push(`URL;TYPE=VCARD:${escVcard(tenant.vcard_url)}`);
+  if (data.portfolio_url) {
+    lines.push(`item3.URL;TYPE=WORK:${escVcard(data.portfolio_url)}`);
+    lines.push(`item3.X-ABLabel:${escVcard('Portfolio')}`);
+  }
+  if (tenant.vcard_url) {
+    lines.push(`item4.URL;TYPE=VCARD:${escVcard(tenant.vcard_url)}`);
+    lines.push(`item4.X-ABLabel:${escVcard('E-Card')}`);
+  }
 
   const website = String(tenant.social_links?.website || '').trim();
-  if (website) lines.push(`URL:${escVcard(website)}`);
+  if (website) {
+    lines.push(`item5.URL:${escVcard(website)}`);
+    lines.push(`item5.X-ABLabel:${escVcard('WebSite')}`);
+  }
 
   const photoUrl = String(tenant.profile_photo_url || '').trim();
   const logoUrl = String(tenant.logo_url || '').trim();
-  if (photoUrl) lines.push(`PHOTO;VALUE=URI:${escVcard(photoUrl)}`);
+  const embeddedPhoto = await buildEmbeddedPhotoLine(photoUrl);
+  if (embeddedPhoto) {
+    lines.push(embeddedPhoto);
+  } else if (photoUrl) {
+    lines.push(`PHOTO;VALUE=URI:${escVcard(photoUrl)}`);
+  }
   if (logoUrl) lines.push(`LOGO;VALUE=URI:${escVcard(logoUrl)}`);
 
   lines.push('END:VCARD');
-  return `${lines.join('\r\n')}\r\n`;
+  const foldedLines = lines.map(foldVcardLine);
+  return `${foldedLines.join('\r\n')}\r\n`;
 }
 
 export async function GET(
@@ -121,7 +185,7 @@ export async function GET(
     return new Response('Contacto no encontrado', { status: 404 });
   }
 
-  const vcardText = buildVcardText(payload);
+  const vcardText = await buildVcardText(payload);
   const filenameSlug = String(payload.tenant.vcard_slug || normalizedSlug)
     .trim()
     .toLowerCase()

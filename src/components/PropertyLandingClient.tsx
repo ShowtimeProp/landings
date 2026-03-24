@@ -5,6 +5,7 @@ import { createElement } from 'react';
 import Script from 'next/script';
 import ShareRail from '@/components/ShareRail';
 import { TenantSocialLinks } from '@/components/social-links';
+import QRCode from 'qrcode';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const WIDGET_ASSET_VERSION = 'livekit-orbs-v3-20260321';
@@ -193,6 +194,8 @@ export function PropertyLandingClient({
     open_now?: boolean | null;
     opening_hours?: string[];
   } | null>(null);
+  const [generatedVcardQrDataUrl, setGeneratedVcardQrDataUrl] = useState('');
+  const [isGeneratingVcardQr, setIsGeneratingVcardQr] = useState(false);
   const isLight = themeMode === 'light';
   const isSoft = themeMode === 'soft';
   const isDark = themeMode === 'dark';
@@ -309,6 +312,7 @@ export function PropertyLandingClient({
   const martilleroReg = String(tenant.martillero_registro || '').trim();
   const vcardUrl = String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
   const vcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
+  const effectiveVcardQrDataUrl = vcardQrDataUrl || generatedVcardQrDataUrl;
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
   const areaRangeLabel =
@@ -336,6 +340,39 @@ export function PropertyLandingClient({
       revealedSections[id] ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
     }`;
   const galleryCount = images.length;
+
+  useEffect(() => {
+    if (vcardQrDataUrl || !vcardUrl) {
+      setGeneratedVcardQrDataUrl('');
+      setIsGeneratingVcardQr(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsGeneratingVcardQr(true);
+    QRCode.toDataURL(vcardUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 360,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffffff',
+      },
+    })
+      .then((url) => {
+        if (!cancelled) setGeneratedVcardQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setGeneratedVcardQrDataUrl('');
+      })
+      .finally(() => {
+        if (!cancelled) setIsGeneratingVcardQr(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vcardQrDataUrl, vcardUrl]);
 
   const goPrevImage = () => {
     if (galleryCount <= 1 || galleryIndex === null) return;
@@ -986,15 +1023,15 @@ export function PropertyLandingClient({
                     title="Agenda Mis Datos"
                     className="group inline-flex flex-col items-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 p-3 transition hover:border-cyan-300/65 hover:bg-cyan-300/15"
                   >
-                    {vcardQrDataUrl ? (
+                    {effectiveVcardQrDataUrl ? (
                       <img
-                        src={vcardQrDataUrl}
+                        src={effectiveVcardQrDataUrl}
                         alt="QR Agenda Mis Datos"
                         className="h-36 w-36 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
                       />
                     ) : (
                       <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
-                        Agenda Mis Datos
+                        {isGeneratingVcardQr ? 'Generando QR...' : 'Agenda Mis Datos'}
                       </div>
                     )}
                     <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
