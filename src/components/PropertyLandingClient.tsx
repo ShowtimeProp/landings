@@ -319,9 +319,13 @@ export function PropertyLandingClient({
   const businessName = String(tenant.name || '').trim();
   const martilleroName = String(tenant.martillero_responsable || '').trim();
   const martilleroReg = String(tenant.martillero_registro || '').trim();
-  const vcardUrl = String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
+  const vcardUrlFromApi = String(tenant.vcard_url || '').trim().replace(
+    /\/vcard\/([^/?#]+)\.vcf(?=$|[?#])/i,
+    '/vcard/$1'
+  );
+  const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
   const vcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
-  const effectiveVcardQrDataUrl = vcardQrDataUrl || generatedVcardQrDataUrl;
+  const effectiveVcardQrDataUrl = generatedVcardQrDataUrl || vcardQrDataUrl;
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
   const areaRangeLabel =
@@ -351,7 +355,7 @@ export function PropertyLandingClient({
   const galleryCount = images.length;
 
   useEffect(() => {
-    if (vcardQrDataUrl || !vcardUrl) {
+    if (!vcardUrl) {
       setGeneratedVcardQrDataUrl('');
       setIsGeneratingVcardQr(false);
       return;
@@ -381,7 +385,7 @@ export function PropertyLandingClient({
     return () => {
       cancelled = true;
     };
-  }, [vcardQrDataUrl, vcardUrl]);
+  }, [vcardUrl]);
 
   const goPrevImage = () => {
     if (galleryCount <= 1 || galleryIndex === null) return;

@@ -226,10 +226,13 @@ export default async function PortfolioPage({
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
     tenant.name;
-  const vcardUrl =
-    String(tenant.vcard_url || '').trim() || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}.vcf` : '');
-  let portfolioVcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
-  if (!portfolioVcardQrDataUrl && vcardUrl) {
+  const vcardUrlFromApi = String(tenant.vcard_url || '').trim().replace(
+    /\/vcard\/([^/?#]+)\.vcf(?=$|[?#])/i,
+    '/vcard/$1'
+  );
+  const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
+  let portfolioVcardQrDataUrl = '';
+  if (vcardUrl) {
     try {
       portfolioVcardQrDataUrl = await QRCode.toDataURL(vcardUrl, {
         errorCorrectionLevel: 'M',
@@ -241,7 +244,7 @@ export default async function PortfolioPage({
         },
       });
     } catch {
-      portfolioVcardQrDataUrl = '';
+      portfolioVcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
     }
   }
   const hasReviewsContent = Boolean(
