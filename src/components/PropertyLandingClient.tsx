@@ -260,6 +260,23 @@ export function PropertyLandingClient({
 
   useEffect(() => {
     if (!tenant.id || !property.id) return;
+    const referralCode = (() => {
+      if (typeof window === 'undefined') return undefined;
+      try {
+        const raw = new URLSearchParams(window.location.search).get('ref') || '';
+        const normalized = raw
+          .trim()
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 64);
+        return normalized || undefined;
+      } catch {
+        return undefined;
+      }
+    })();
     const vid = (() => {
       try {
         let v = localStorage.getItem('sp-visitor-id');
@@ -279,6 +296,7 @@ export function PropertyLandingClient({
         event_type: 'property_view',
         tenant_id: tenant.id,
         property_id: property.id,
+        ref: referralCode,
         visitor_id: vid,
         page_url: typeof window !== 'undefined' ? window.location.href : undefined,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,

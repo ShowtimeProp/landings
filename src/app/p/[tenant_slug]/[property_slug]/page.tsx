@@ -157,16 +157,30 @@ export async function generateMetadata({
 
 export default async function PropertyLandingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant_slug: string; property_slug: string }>;
+  searchParams: Promise<{ ref?: string }>;
 }) {
   const { tenant_slug, property_slug } = await params;
+  const { ref: refParam } = await searchParams;
   const data = await fetchPublicProperty(tenant_slug, property_slug);
   if (!data) notFound();
 
   const { tenant, property } = data;
+  const referralCode = String(refParam || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
   const whatsappPhone = tenant.whatsapp ? sanitizePhoneToWa(tenant.whatsapp) : "";
-  const whatsappText = buildWhatsappMessage(property);
+  const baseWhatsappText = buildWhatsappMessage(property);
+  const whatsappText = referralCode
+    ? `${baseWhatsappText} ref=${referralCode} source=referral`
+    : baseWhatsappText;
   const whatsappUrl = whatsappPhone
     ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappText)}`
     : "";

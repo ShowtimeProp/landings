@@ -137,10 +137,27 @@ function normalizeTheme(raw: string | null | undefined): PortfolioTheme {
   return 'dark';
 }
 
-function getWhatsappUrl(phone?: string | null, tenantName?: string): string | null {
+function normalizeReferralCode(raw?: string | null): string | null {
+  const value = String(raw || '').trim().toLowerCase();
+  if (!value) return null;
+  const normalized = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+  return normalized || null;
+}
+
+function getWhatsappUrl(phone?: string | null, tenantName?: string, referralCode?: string | null): string | null {
   const digits = (phone || '').replace(/[^\d]/g, '');
   if (!digits) return null;
-  const message = encodeURIComponent(`Hola ${tenantName || ''}, vi tu portfolio y me interesa una propiedad.`);
+  const normalizedRef = normalizeReferralCode(referralCode);
+  const baseMessage = `Hola ${tenantName || ''}, vi tu portfolio y me interesa una propiedad.`;
+  const messageWithTracking = normalizedRef
+    ? `${baseMessage} ref=${normalizedRef} source=referral`
+    : baseMessage;
+  const message = encodeURIComponent(messageWithTracking);
   return `https://wa.me/${digits}?text=${message}`;
 }
 
@@ -213,17 +230,18 @@ export default async function PortfolioPage({
   searchParams,
 }: {
   params: Promise<{ tenant_slug: string }>;
-  searchParams: Promise<{ theme?: string }>;
+  searchParams: Promise<{ theme?: string; ref?: string }>;
 }) {
   const { tenant_slug } = await params;
-  const { theme: themeParam } = await searchParams;
+  const { theme: themeParam, ref: refParam } = await searchParams;
   const data = await fetchPortfolio(tenant_slug);
   if (!data) notFound();
   const placeReviews = await fetchPlaceReviews(tenant_slug);
 
   const { tenant, properties } = data;
+  const referralCode = normalizeReferralCode(refParam);
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
-  const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name);
+  const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, referralCode);
   const contactName =
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
@@ -295,7 +313,11 @@ export default async function PortfolioPage({
   const emailButtonClass = isLight
     ? 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100'
     : 'border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10';
-  const themeHref = (nextTheme: PortfolioTheme) => `/p/${tenant.slug}?theme=${nextTheme}`;
+  const themeHref = (nextTheme: PortfolioTheme) => {
+    const params = new URLSearchParams({ theme: nextTheme });
+    if (referralCode) params.set('ref', referralCode);
+    return `/p/${tenant.slug}?${params.toString()}`;
+  };
 
   return (
     <div className={`min-h-screen ${rootClass}`}>
@@ -527,6 +549,7 @@ export default async function PortfolioPage({
                   <PortfolioPropertyCard
                     key={item.id}
                     tenantSlug={tenant.slug}
+                    referralCode={referralCode}
                     item={item}
                     theme={theme}
                     isLight={isLight}

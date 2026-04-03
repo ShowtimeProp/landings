@@ -74,6 +74,7 @@ function FeatureChip({
 
 export default function PortfolioPropertyCard({
   tenantSlug,
+  referralCode,
   item,
   theme,
   isLight,
@@ -84,6 +85,7 @@ export default function PortfolioPropertyCard({
   operationType,
 }: {
   tenantSlug: string;
+  referralCode?: string | null;
   item: PropertyItem;
   theme: PortfolioTheme;
   isLight: boolean;
@@ -93,7 +95,8 @@ export default function PortfolioPropertyCard({
   propertyType: string | null;
   operationType: string | null;
 }) {
-  const href = item.slug ? `/p/${tenantSlug}/${item.slug}` : `/p/${tenantSlug}/${item.id}`;
+  const baseHref = item.slug ? `/p/${tenantSlug}/${item.slug}` : `/p/${tenantSlug}/${item.id}`;
+  const href = referralCode ? `${baseHref}?ref=${encodeURIComponent(referralCode)}` : baseHref;
 
   const imageList = useMemo(() => {
     return (item.images || [])
