@@ -20,6 +20,8 @@ type PropertyItem = {
   area_sqm_max?: number | null;
   total_units?: number | null;
   price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
   tour_virtual_url?: string | null;
@@ -109,7 +111,22 @@ export default function PortfolioPropertyCard({
 
   const currentImage = imageList[imageIndex] || null;
 
-  const price = item.price_on_request ? 'Consultar precio' : formatPrice(item.price, item.currency);
+  const rawPriceMin = typeof item.price_min === 'number' ? item.price_min : null;
+  const rawPriceMax = typeof item.price_max === 'number' ? item.price_max : null;
+  const priceMin =
+    rawPriceMin != null && rawPriceMax != null && rawPriceMin > rawPriceMax ? rawPriceMax : rawPriceMin;
+  const priceMax =
+    rawPriceMin != null && rawPriceMax != null && rawPriceMin > rawPriceMax ? rawPriceMin : rawPriceMax;
+  const price =
+    item.price_on_request
+      ? 'Consultar precio'
+      : priceMin != null && priceMax != null && priceMin !== priceMax
+      ? `${formatPrice(priceMin, item.currency)} - ${formatPrice(priceMax, item.currency)}`
+      : priceMin != null
+      ? formatPrice(priceMin, item.currency)
+      : priceMax != null
+      ? formatPrice(priceMax, item.currency)
+      : formatPrice(item.price, item.currency);
   const areaRangeLabel =
     item.area_sqm_min != null && item.area_sqm_max != null
       ? `${Math.round(item.area_sqm_min)}-${Math.round(item.area_sqm_max)} m²`

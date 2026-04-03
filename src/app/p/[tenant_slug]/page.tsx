@@ -46,6 +46,8 @@ type PropertyItem = {
   area_sqm_max?: number | null;
   total_units?: number | null;
   price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
   tour_virtual_url?: string | null;

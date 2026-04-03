@@ -31,6 +31,8 @@ type Property = {
   area_sqm_max?: number | null;
   total_units?: number | null;
   price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
   price_on_request?: boolean | null;
   currency?: string | null;
   latitude?: number | null;
@@ -336,6 +338,25 @@ export function PropertyLandingClient({
       : areaSqsMax != null
       ? `Hasta ${areaSqsMax} m²`
       : null;
+  const rawPriceMin = typeof property.price_min === 'number' ? property.price_min : null;
+  const rawPriceMax = typeof property.price_max === 'number' ? property.price_max : null;
+  const priceMin =
+    rawPriceMin != null && rawPriceMax != null && rawPriceMin > rawPriceMax ? rawPriceMax : rawPriceMin;
+  const priceMax =
+    rawPriceMin != null && rawPriceMax != null && rawPriceMin > rawPriceMax ? rawPriceMin : rawPriceMax;
+  const formatMoney = (value: number) =>
+    `${property.currency || 'USD'} ${value.toLocaleString('es-AR')}`;
+  const priceLabel = property.price_on_request
+    ? 'Consultar precio'
+    : priceMin != null && priceMax != null && priceMin !== priceMax
+    ? `${formatMoney(priceMin)} - ${formatMoney(priceMax)}`
+    : priceMin != null
+    ? formatMoney(priceMin)
+    : priceMax != null
+    ? formatMoney(priceMax)
+    : property.price != null
+    ? formatMoney(property.price)
+    : null;
   const mapQuery =
     property.latitude != null && property.longitude != null
       ? `${property.latitude},${property.longitude}`
@@ -722,15 +743,11 @@ export function PropertyLandingClient({
                 themeMode={themeMode}
               />
             )}
-            {(property.price_on_request || property.price != null) && (
+            {priceLabel && (
               <InfoCard
                 icon="price"
                 label="PRECIO"
-                value={
-                  property.price_on_request
-                    ? 'Consultar precio'
-                    : `${property.currency || 'USD'} ${property.price!.toLocaleString('es-AR')}`
-                }
+                value={priceLabel}
                 themeMode={themeMode}
               />
             )}

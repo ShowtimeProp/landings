@@ -49,6 +49,8 @@ type PublicProperty = {
   area_sqm_max?: number | null;
   total_units?: number | null;
   price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
   currency?: string | null;
   latitude?: number | null;
   longitude?: number | null;
