@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { PropertyLandingClient } from "@/components/PropertyLandingClient";
+import TenantGtm from "@/components/TenantGtm";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -26,6 +27,11 @@ type PublicTenant = {
   vcard_qr_data_url?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
+  marketing?: {
+    gtm_enabled?: boolean;
+    gtm_container_id?: string | null;
+    attribution_model?: string;
+  } | null;
 };
 
 type PublicProperty = {
@@ -186,10 +192,13 @@ export default async function PropertyLandingPage({
     : "";
 
   return (
-    <PropertyLandingClient
-      tenant={tenant}
-      property={property}
-      whatsappUrl={whatsappUrl}
-    />
+    <>
+      <TenantGtm marketing={tenant.marketing} />
+      <PropertyLandingClient
+        tenant={tenant}
+        property={property}
+        whatsappUrl={whatsappUrl}
+      />
+    </>
   );
 }

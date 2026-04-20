@@ -5,6 +5,12 @@ import { createElement } from 'react';
 import Script from 'next/script';
 import ShareRail from '@/components/ShareRail';
 import { TenantSocialLinks } from '@/components/social-links';
+import {
+  CampaignParams,
+  buildTrackedWhatsappUrl,
+  campaignParamsFromSearchParams,
+  captureCampaignFromLocation,
+} from '@/lib/campaign-tracking';
 import QRCode from 'qrcode';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -198,6 +204,13 @@ export function PropertyLandingClient({
   } | null>(null);
   const [generatedVcardQrDataUrl, setGeneratedVcardQrDataUrl] = useState('');
   const [isGeneratingVcardQr, setIsGeneratingVcardQr] = useState(false);
+  const [campaign, setCampaign] = useState<CampaignParams>(() => {
+    if (typeof window === 'undefined') return {};
+    return campaignParamsFromSearchParams(new URLSearchParams(window.location.search));
+  });
+  const [trackedWhatsappUrl, setTrackedWhatsappUrl] = useState(() =>
+    buildTrackedWhatsappUrl(whatsappUrl, campaign)
+  );
   const isLight = themeMode === 'light';
   const isSoft = themeMode === 'soft';
   const isDark = themeMode === 'dark';
@@ -259,24 +272,18 @@ export function PropertyLandingClient({
   }, [tenant.google_place_id, tenant.slug]);
 
   useEffect(() => {
+    if (!tenant.slug) return;
+    const captured = captureCampaignFromLocation(tenant.slug);
+    setCampaign(captured);
+    setTrackedWhatsappUrl(buildTrackedWhatsappUrl(whatsappUrl, captured));
+  }, [tenant.slug, whatsappUrl]);
+
+  useEffect(() => {
     if (!tenant.id || !property.id) return;
-    const referralCode = (() => {
-      if (typeof window === 'undefined') return undefined;
-      try {
-        const raw = new URLSearchParams(window.location.search).get('ref') || '';
-        const normalized = raw
-          .trim()
-          .toLowerCase()
-          .normalize('NFKD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '')
-          .slice(0, 64);
-        return normalized || undefined;
-      } catch {
-        return undefined;
-      }
-    })();
+    const eventKey = `sp-property-view:${tenant.id}:${property.id}`;
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem(eventKey) === '1') {
+      return;
+    }
     const vid = (() => {
       try {
         let v = localStorage.getItem('sp-visitor-id');
@@ -296,13 +303,33 @@ export function PropertyLandingClient({
         event_type: 'property_view',
         tenant_id: tenant.id,
         property_id: property.id,
-        ref: referralCode,
         visitor_id: vid,
         page_url: typeof window !== 'undefined' ? window.location.href : undefined,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        ...campaign,
       }),
     }).catch(() => {});
-  }, [tenant.id, property.id]);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(eventKey, '1');
+    }
+  }, [tenant.id, property.id, campaign]);
+
+  const trackWhatsappClick = () => {
+    if (!tenant.id) return;
+    fetch(`${BACKEND_URL}/api/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'whatsapp_click',
+        tenant_id: tenant.id,
+        property_id: property.id,
+        page_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        ...campaign,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  };
 
   const widgetMode = (property.widget_mode || 'auto').toLowerCase();
   const hasTourVirtual = Boolean(property.tour_virtual_url);
@@ -488,6 +515,16 @@ export function PropertyLandingClient({
         tenantId: tenant.id,
         propertyId: property.id,
         source: 'landing_page',
+        ref: campaign.ref,
+        utm_source: campaign.utm_source,
+        utm_medium: campaign.utm_medium,
+        utm_campaign: campaign.utm_campaign,
+        utm_content: campaign.utm_content,
+        utm_term: campaign.utm_term,
+        fbclid: campaign.fbclid,
+        gclid: campaign.gclid,
+        gbraid: campaign.gbraid,
+        wbraid: campaign.wbraid,
         lang: widgetConfig.lang || 'es',
         position: widgetConfig.position || 'bottom-right',
         visualizerType: widgetConfig.visualizer_type || 'grid',
@@ -530,7 +567,7 @@ export function PropertyLandingClient({
     return () => {
       cancelled = true;
     };
-  }, [tenant.id, property.id, property.widget_config, shouldRenderLandingWidget]);
+  }, [tenant.id, property.id, property.widget_config, shouldRenderLandingWidget, campaign]);
 
   return (
     <div
@@ -772,11 +809,12 @@ export function PropertyLandingClient({
           </div>
 
           <div className="mt-12 flex flex-wrap gap-3">
-            {whatsappUrl && (
+            {trackedWhatsappUrl && (
               <a
-                href={whatsappUrl}
+                href={trackedWhatsappUrl}
                 target="_blank"
                 rel="noreferrer"
+                onClick={trackWhatsappClick}
                 className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
               >
                 Consultar por WhatsApp
@@ -1153,11 +1191,12 @@ export function PropertyLandingClient({
                 )}
               </div>
 
-              {whatsappUrl && (
+              {trackedWhatsappUrl && (
                 <a
-                  href={whatsappUrl}
+                  href={trackedWhatsappUrl}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={trackWhatsappClick}
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
                 >
                   WhatsApp

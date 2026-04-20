@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import TenantGtm from "@/components/TenantGtm";
+import {
+  appendCampaignParamsToUrl,
+  captureCampaignFromLocation,
+} from "@/lib/campaign-tracking";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -14,12 +19,17 @@ export default function SlotLoaderPage() {
     "loading"
   );
   const [message, setMessage] = useState<string>("");
+  const [marketing, setMarketing] = useState<{
+    gtm_enabled?: boolean;
+    gtm_container_id?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!tenantSlug || !slot) return;
 
     const run = async () => {
       try {
+        const campaign = captureCampaignFromLocation(tenantSlug);
         const visitorId =
           typeof crypto !== "undefined" && crypto.randomUUID
             ? crypto.randomUUID()
@@ -29,6 +39,7 @@ export default function SlotLoaderPage() {
           `${BACKEND_URL}/api/slots/resolve-by-slug?tenant_slug=${encodeURIComponent(tenantSlug)}&slot=${encodeURIComponent(slot)}`
         );
         const data = await res.json();
+        setMarketing(data?.marketing || null);
 
         if (data.status === "active" && data.property_id && data.tenant_id) {
           await fetch(`${BACKEND_URL}/api/track`, {
@@ -42,6 +53,7 @@ export default function SlotLoaderPage() {
               visitor_id: visitorId,
               user_agent: navigator.userAgent,
               page_url: typeof window !== "undefined" ? window.location.href : "",
+              ...campaign,
             }),
           }).catch(() => {});
 
@@ -53,8 +65,12 @@ export default function SlotLoaderPage() {
             "";
 
           if (resolvedRedirect) {
+            const redirectWithCampaign = appendCampaignParamsToUrl(
+              resolvedRedirect,
+              campaign
+            );
             setStatus("redirecting");
-            window.location.href = resolvedRedirect;
+            window.location.href = redirectWithCampaign;
             return;
           }
 
@@ -65,8 +81,12 @@ export default function SlotLoaderPage() {
             const redirectUrl = `${tourUrl}${sep}tenant_id=${data.tenant_id}&property_id=${data.property_id}&slot=${encodeURIComponent(
               slot
             )}`;
+            const redirectWithCampaign = appendCampaignParamsToUrl(
+              redirectUrl,
+              campaign
+            );
             setStatus("redirecting");
-            window.location.href = redirectUrl;
+            window.location.href = redirectWithCampaign;
             return;
           }
 
@@ -86,6 +106,8 @@ export default function SlotLoaderPage() {
 
   if (status === "loading" || status === "redirecting") {
     return (
+    <>
+      <TenantGtm marketing={marketing} />
       <div
         style={{
           display: "flex",
@@ -99,25 +121,29 @@ export default function SlotLoaderPage() {
       >
         <p>{status === "redirecting" ? "Redirigiendo..." : "Cargando..."}</p>
       </div>
-    );
-  }
+    </>
+  );
+}
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        fontFamily: "sans-serif",
-        background: "#111",
-        color: "#fff",
-        padding: 24,
-      }}
-    >
-      <h1>Cartel no disponible</h1>
-      <p>{message}</p>
-    </div>
+    <>
+      <TenantGtm marketing={marketing} />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          fontFamily: "sans-serif",
+          background: "#111",
+          color: "#fff",
+          padding: 24,
+        }}
+      >
+        <h1>Cartel no disponible</h1>
+        <p>{message}</p>
+      </div>
+    </>
   );
 }

@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
+import PortfolioTrackingBridge from '@/components/PortfolioTrackingBridge';
 import ShareRail from '@/components/ShareRail';
+import TenantGtm from '@/components/TenantGtm';
 import { TenantSocialLinks } from '@/components/social-links';
 import QRCode from 'qrcode';
 
@@ -29,6 +31,11 @@ type Tenant = {
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
+  marketing?: {
+    gtm_enabled?: boolean;
+    gtm_container_id?: string | null;
+    attribution_model?: string;
+  } | null;
 };
 
 type PropertyItem = {
@@ -149,14 +156,42 @@ function normalizeReferralCode(raw?: string | null): string | null {
   return normalized || null;
 }
 
-function getWhatsappUrl(phone?: string | null, tenantName?: string, referralCode?: string | null): string | null {
+const CAMPAIGN_QUERY_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'fbclid',
+  'gclid',
+  'gbraid',
+  'wbraid',
+] as const;
+
+function buildCampaignQueryString(
+  rawSearch: Record<string, string | undefined>,
+  referralCode?: string | null
+): string {
+  const params = new URLSearchParams();
+  if (referralCode) params.set('ref', referralCode);
+  for (const key of CAMPAIGN_QUERY_KEYS) {
+    const value = String(rawSearch[key] || '').trim();
+    if (value) params.set(key, value);
+  }
+  return params.toString();
+}
+
+function getWhatsappUrl(
+  phone?: string | null,
+  tenantName?: string,
+  campaignQueryString?: string
+): string | null {
   const digits = (phone || '').replace(/[^\d]/g, '');
   if (!digits) return null;
-  const normalizedRef = normalizeReferralCode(referralCode);
   const baseMessage = `Hola ${tenantName || ''}, vi tu portfolio y me interesa una propiedad.`;
-  const messageWithTracking = normalizedRef
-    ? `${baseMessage} ref=${normalizedRef} source=referral`
-    : baseMessage;
+  const messageWithTracking = campaignQueryString
+    ? `${baseMessage} source=portfolio_page ${campaignQueryString.replace(/&/g, ' ')}`
+    : `${baseMessage} source=portfolio_page`;
   const message = encodeURIComponent(messageWithTracking);
   return `https://wa.me/${digits}?text=${message}`;
 }
@@ -230,18 +265,21 @@ export default async function PortfolioPage({
   searchParams,
 }: {
   params: Promise<{ tenant_slug: string }>;
-  searchParams: Promise<{ theme?: string; ref?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { tenant_slug } = await params;
-  const { theme: themeParam, ref: refParam } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const themeParam = resolvedSearchParams.theme;
+  const refParam = resolvedSearchParams.ref;
   const data = await fetchPortfolio(tenant_slug);
   if (!data) notFound();
   const placeReviews = await fetchPlaceReviews(tenant_slug);
 
   const { tenant, properties } = data;
   const referralCode = normalizeReferralCode(refParam);
+  const campaignQueryString = buildCampaignQueryString(resolvedSearchParams, referralCode);
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
-  const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, referralCode);
+  const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, campaignQueryString);
   const contactName =
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
@@ -315,12 +353,19 @@ export default async function PortfolioPage({
     : 'border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10';
   const themeHref = (nextTheme: PortfolioTheme) => {
     const params = new URLSearchParams({ theme: nextTheme });
-    if (referralCode) params.set('ref', referralCode);
+    if (campaignQueryString) {
+      const campaignParams = new URLSearchParams(campaignQueryString);
+      campaignParams.forEach((value, key) => {
+        if (key !== 'theme') params.set(key, value);
+      });
+    }
     return `/p/${tenant.slug}?${params.toString()}`;
   };
 
   return (
     <div className={`min-h-screen ${rootClass}`}>
+      <TenantGtm marketing={tenant.marketing} />
+      <PortfolioTrackingBridge tenantId={tenant.id} tenantSlug={tenant.slug} />
       <PortfolioWidgetGuard />
       <ShareRail themeMode={theme} shareTitle={`Portfolio de ${tenant.name}`} />
       <div className={`pointer-events-none fixed inset-0 -z-10 ${overlayClass}`} />
@@ -425,6 +470,7 @@ export default async function PortfolioPage({
                       href={whatsappUrl}
                       target="_blank"
                       rel="noreferrer"
+                      data-track-whatsapp="true"
                       className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
                     >
                       WhatsApp
@@ -550,6 +596,7 @@ export default async function PortfolioPage({
                     key={item.id}
                     tenantSlug={tenant.slug}
                     referralCode={referralCode}
+                    campaignQueryString={campaignQueryString}
                     item={item}
                     theme={theme}
                     isLight={isLight}
