@@ -25,6 +25,8 @@ type PublicTenant = {
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
+  contact_ref_applied?: boolean | null;
+  contact_ref_code?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
   marketing?: {
@@ -93,11 +95,17 @@ function buildWhatsappMessage(property: PublicProperty) {
 
 async function fetchPublicProperty(
   tenantSlug: string,
-  propertySlug: string
+  propertySlug: string,
+  referralCode?: string | null
 ): Promise<ApiResponse | null> {
-  const url = `${BACKEND_URL}/api/properties/public/by-slug?tenant_slug=${encodeURIComponent(
-    tenantSlug
-  )}&property_slug=${encodeURIComponent(propertySlug)}`;
+  const params = new URLSearchParams({
+    tenant_slug: tenantSlug,
+    property_slug: propertySlug,
+  });
+  if (referralCode) {
+    params.set('ref', referralCode);
+  }
+  const url = `${BACKEND_URL}/api/properties/public/by-slug?${params.toString()}`;
   const res = await fetch(url, { next: { revalidate: 60 }, redirect: "manual" });
   if (res.status === 301 || res.status === 302) {
     const loc = res.headers.get("location");
@@ -170,10 +178,6 @@ export default async function PropertyLandingPage({
 }) {
   const { tenant_slug, property_slug } = await params;
   const { ref: refParam } = await searchParams;
-  const data = await fetchPublicProperty(tenant_slug, property_slug);
-  if (!data) notFound();
-
-  const { tenant, property } = data;
   const referralCode = String(refParam || '')
     .trim()
     .toLowerCase()
@@ -182,6 +186,10 @@ export default async function PropertyLandingPage({
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
+  const data = await fetchPublicProperty(tenant_slug, property_slug, referralCode || null);
+  if (!data) notFound();
+
+  const { tenant, property } = data;
   const whatsappPhone = tenant.whatsapp ? sanitizePhoneToWa(tenant.whatsapp) : "";
   const baseWhatsappText = buildWhatsappMessage(property);
   const whatsappText = referralCode

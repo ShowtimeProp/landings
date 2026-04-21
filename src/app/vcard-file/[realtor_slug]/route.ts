@@ -28,6 +28,17 @@ type VCardApiResponse = {
   portfolio_url?: string | null;
 };
 
+function normalizeRefCode(raw: string | null): string {
+  return String(raw || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+}
+
 function foldVcardLine(line: string): string {
   if (line.length <= 75) return line;
   let out = '';
@@ -165,18 +176,24 @@ export async function GET(
   request: Request,
   context: { params: Promise<Record<string, string>> }
 ) {
+  const requestUrl = new URL(request.url);
+  const referralCode = normalizeRefCode(requestUrl.searchParams.get('ref'));
   const params = await context.params;
   const rawParamSlug = String(params.realtor_slug || '').trim();
-  const urlPath = new URL(request.url).pathname;
+  const urlPath = requestUrl.pathname;
   const rawPathSlug = decodeURIComponent(urlPath.split('/').pop() || '').replace(/\.vcf$/i, '').trim();
   const normalizedSlug = String(rawParamSlug || rawPathSlug).trim().toLowerCase().replace(/\.vcf$/i, '');
   if (!normalizedSlug) {
     return new Response('Contacto no encontrado', { status: 404 });
   }
 
-  const apiUrl = `${BACKEND_URL}/api/properties/public/vcard?realtor_slug=${encodeURIComponent(
-    normalizedSlug
-  )}`;
+  const apiParams = new URLSearchParams({
+    realtor_slug: normalizedSlug,
+  });
+  if (referralCode) {
+    apiParams.set('ref', referralCode);
+  }
+  const apiUrl = `${BACKEND_URL}/api/properties/public/vcard?${apiParams.toString()}`;
   const response = await fetch(apiUrl, { cache: 'no-store' });
   if (!response.ok) {
     return new Response('Contacto no encontrado', { status: 404 });

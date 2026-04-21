@@ -31,6 +31,8 @@ type Tenant = {
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
+  contact_ref_applied?: boolean | null;
+  contact_ref_code?: string | null;
   marketing?: {
     gtm_enabled?: boolean;
     gtm_container_id?: string | null;
@@ -112,8 +114,17 @@ const OPERATION_LABELS: Record<string, string> = {
   both: 'Venta y alquiler',
 };
 
-async function fetchPortfolio(tenantSlug: string): Promise<ApiResponse | null> {
-  const url = `${BACKEND_URL}/api/properties/public/portfolio?tenant_slug=${encodeURIComponent(tenantSlug)}`;
+async function fetchPortfolio(
+  tenantSlug: string,
+  referralCode?: string | null
+): Promise<ApiResponse | null> {
+  const params = new URLSearchParams({
+    tenant_slug: tenantSlug,
+  });
+  if (referralCode) {
+    params.set('ref', referralCode);
+  }
+  const url = `${BACKEND_URL}/api/properties/public/portfolio?${params.toString()}`;
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) return null;
   const data = (await res.json()) as ApiResponse;
@@ -271,12 +282,12 @@ export default async function PortfolioPage({
   const resolvedSearchParams = await searchParams;
   const themeParam = resolvedSearchParams.theme;
   const refParam = resolvedSearchParams.ref;
-  const data = await fetchPortfolio(tenant_slug);
+  const referralCode = normalizeReferralCode(refParam);
+  const data = await fetchPortfolio(tenant_slug, referralCode);
   if (!data) notFound();
   const placeReviews = await fetchPlaceReviews(tenant_slug);
 
   const { tenant, properties } = data;
-  const referralCode = normalizeReferralCode(refParam);
   const campaignQueryString = buildCampaignQueryString(resolvedSearchParams, referralCode);
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, campaignQueryString);
@@ -289,6 +300,7 @@ export default async function PortfolioPage({
     '/vcard/$1'
   );
   const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
+  const persistedQrFallback = tenant.contact_ref_applied ? '' : String(tenant.vcard_qr_data_url || '').trim();
   let portfolioVcardQrDataUrl = '';
   if (vcardUrl) {
     try {
@@ -302,7 +314,7 @@ export default async function PortfolioPage({
         },
       });
     } catch {
-      portfolioVcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
+      portfolioVcardQrDataUrl = persistedQrFallback;
     }
   }
   const hasReviewsContent = Boolean(

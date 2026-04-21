@@ -16,12 +16,13 @@ function detectDevice(): DeviceType {
   return 'other';
 }
 
-export default function VcardGatewayClient({ slug }: { slug: string }) {
+export default function VcardGatewayClient({ slug, refCode }: { slug: string; refCode?: string }) {
   const [device, setDevice] = useState<DeviceType>('other');
-  const downloadUrl = useMemo(
-    () => `/vcard-file/${encodeURIComponent(String(slug || '').trim())}.vcf`,
-    [slug]
-  );
+  const downloadUrl = useMemo(() => {
+    const base = `/vcard-file/${encodeURIComponent(String(slug || '').trim())}.vcf`;
+    if (!refCode) return base;
+    return `${base}?ref=${encodeURIComponent(refCode)}`;
+  }, [slug, refCode]);
 
   useEffect(() => {
     const detected = detectDevice();

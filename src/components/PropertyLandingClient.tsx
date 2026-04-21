@@ -80,6 +80,8 @@ type Tenant = {
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
+  contact_ref_applied?: boolean | null;
+  contact_ref_code?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
 };
@@ -371,7 +373,7 @@ export function PropertyLandingClient({
     '/vcard/$1'
   );
   const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
-  const vcardQrDataUrl = String(tenant.vcard_qr_data_url || '').trim();
+  const vcardQrDataUrl = tenant.contact_ref_applied ? '' : String(tenant.vcard_qr_data_url || '').trim();
   const effectiveVcardQrDataUrl = generatedVcardQrDataUrl || vcardQrDataUrl;
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
