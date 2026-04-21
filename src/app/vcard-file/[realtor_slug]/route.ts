@@ -3,6 +3,7 @@ const BACKEND_URL =
 const MAX_EMBEDDED_PHOTO_BYTES = 512 * 1024;
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type VCardTenant = {
   name: string;
@@ -176,7 +177,7 @@ export async function GET(
   const apiUrl = `${BACKEND_URL}/api/properties/public/vcard?realtor_slug=${encodeURIComponent(
     normalizedSlug
   )}`;
-  const response = await fetch(apiUrl, { next: { revalidate: 300 } });
+  const response = await fetch(apiUrl, { cache: 'no-store' });
   if (!response.ok) {
     return new Response('Contacto no encontrado', { status: 404 });
   }
@@ -199,7 +200,7 @@ export async function GET(
     headers: {
       'Content-Type': 'text/vcard; charset=utf-8',
       'Content-Disposition': `inline; filename="${safeFile}.vcf"`,
-      'Cache-Control': 'public, max-age=300',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
     },
   });
 }
