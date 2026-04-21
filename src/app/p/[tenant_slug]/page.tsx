@@ -4,6 +4,7 @@ import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 import PortfolioTrackingBridge from '@/components/PortfolioTrackingBridge';
+import PortfolioContactActions from '@/components/PortfolioContactActions';
 import ShareRail from '@/components/ShareRail';
 import TenantGtm from '@/components/TenantGtm';
 import { TenantSocialLinks } from '@/components/social-links';
@@ -476,27 +477,15 @@ export default async function PortfolioPage({
               </div>
               <div className="space-y-2">
                 <p className={`text-sm font-medium ${titleTextClass}`}>Asesor: {contactName}</p>
-                <div className="flex flex-wrap gap-2">
-                  {whatsappUrl && (
-                    <a
-                      href={whatsappUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      data-track-whatsapp="true"
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
-                    >
-                      WhatsApp
-                    </a>
-                  )}
-                  {tenant.email && (
-                    <a
-                      href={`mailto:${tenant.email}`}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${emailButtonClass}`}
-                    >
-                      Email
-                    </a>
-                  )}
-                </div>
+                <PortfolioContactActions
+                  backendUrl={BACKEND_URL}
+                  tenantSlug={tenant.slug}
+                  whatsappUrl={whatsappUrl}
+                  referralCode={referralCode}
+                  campaignQueryString={campaignQueryString}
+                  emailButtonClass={emailButtonClass}
+                  themeMode={theme}
+                />
                 <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="pt-1" />
               </div>
               {vcardUrl && (
