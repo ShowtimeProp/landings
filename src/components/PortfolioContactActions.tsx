@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ThemeMode = 'light' | 'soft' | 'dark';
 
 type Props = {
   backendUrl: string;
   tenantSlug: string;
+  defaultPropertyId?: string | null;
   whatsappUrl?: string | null;
   referralCode?: string | null;
   campaignQueryString?: string;
@@ -40,6 +42,7 @@ function normalizeWhatsappInput(raw: string): string {
 export default function PortfolioContactActions({
   backendUrl,
   tenantSlug,
+  defaultPropertyId,
   whatsappUrl,
   referralCode,
   campaignQueryString,
@@ -53,6 +56,11 @@ export default function PortfolioContactActions({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const campaign = useMemo(() => {
     const out: Record<string, string> = {};
@@ -112,6 +120,7 @@ export default function PortfolioContactActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_slug: tenantSlug,
+          property_id: defaultPropertyId || null,
           ref: referralCode || null,
           source: 'portfolio_page',
           email: normalizedEmail,
@@ -174,8 +183,9 @@ export default function PortfolioContactActions({
         </p>
       ) : null}
 
-      {open ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">
+      {open && isMounted
+        ? createPortal(
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-4">
           <form
             onSubmit={submitEmailLead}
             className={`w-full max-w-md rounded-2xl border p-4 shadow-2xl ${modalCardClass}`}
@@ -251,8 +261,10 @@ export default function PortfolioContactActions({
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        </div>,
+          document.body
+        )
+        : null}
     </>
   );
 }

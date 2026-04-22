@@ -5,6 +5,7 @@ import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 import PortfolioTrackingBridge from '@/components/PortfolioTrackingBridge';
 import PortfolioContactActions from '@/components/PortfolioContactActions';
+import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import ShareRail from '@/components/ShareRail';
 import TenantGtm from '@/components/TenantGtm';
 import { TenantSocialLinks } from '@/components/social-links';
@@ -14,6 +15,12 @@ const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL =
   process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
+
+type TenantMapConfig = {
+  enabled: boolean;
+  styleUrl?: string | null;
+  publicToken: string;
+};
 
 type Tenant = {
   id: string;
@@ -39,6 +46,7 @@ type Tenant = {
     gtm_container_id?: string | null;
     attribution_model?: string;
   } | null;
+  map?: TenantMapConfig | null;
 };
 
 type PropertyItem = {
@@ -62,6 +70,8 @@ type PropertyItem = {
   currency?: string | null;
   tour_virtual_url?: string | null;
   images?: unknown[];
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type ApiResponse = {
@@ -480,6 +490,7 @@ export default async function PortfolioPage({
                 <PortfolioContactActions
                   backendUrl={BACKEND_URL}
                   tenantSlug={tenant.slug}
+                  defaultPropertyId={properties[0]?.id ?? null}
                   whatsappUrl={whatsappUrl}
                   referralCode={referralCode}
                   campaignQueryString={campaignQueryString}
@@ -517,6 +528,24 @@ export default async function PortfolioPage({
             </div>
           </div>
         </section>
+
+        {tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.') && (
+          <div className="mt-8">
+            <PortfolioMapLoader
+              accessToken={tenant.map.publicToken}
+              styleUrl={tenant.map.styleUrl}
+              tenantSlug={tenant.slug}
+              referralCode={referralCode}
+              campaignQueryString={campaignQueryString}
+              properties={properties}
+              theme={theme}
+              isLight={isLight}
+              sectionClass={sectionClass}
+              subtleTextClass={subtleTextClass}
+              titleTextClass={titleTextClass}
+            />
+          </div>
+        )}
 
         {hasReviewsContent && placeReviews && (
           <section className={`mt-6 rounded-2xl border p-5 sm:p-6 ${sectionClass}`}>
