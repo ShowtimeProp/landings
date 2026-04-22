@@ -13,3 +13,58 @@
   --muted: #a1a1aa;
   --border: #27272a;
 }
+
+/* Mapa del portfolio: pulso “sonar” alrededor del pin */
+@keyframes portfolio-map-sonar {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+
+.portfolio-map-marker-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.portfolio-map-sonar-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 2px solid rgba(34, 211, 238, 0.7);
+  animation: portfolio-map-sonar 2.4s ease-out infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.portfolio-map-sonar-ring--delay-1 {
+  animation-delay: 0.8s;
+}
+
+.portfolio-map-sonar-ring--delay-2 {
+  animation-delay: 1.6s;
+}
+
+.portfolio-map-marker-dot {
+  position: relative;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #22d3ee;
+  border: 2px solid rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
+  cursor: pointer;
+}

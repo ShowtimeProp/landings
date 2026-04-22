@@ -94,17 +94,31 @@ export default function PortfolioMapBlock({
 
     for (const p of points) {
       const href = buildPropertyHref(tenantSlug, p, referralCode, campaignQueryString);
-      const el = document.createElement('div');
-      el.className = 'portfolio-map-marker';
-      el.style.cssText =
-        'width:12px;height:12px;border-radius:9999px;background:#22d3ee;border:2px solid rgba(15,23,42,0.85);cursor:pointer;box-shadow:0 0 0 2px rgba(34,211,238,0.35);';
-      const popup = new mapboxgl.Popup({ offset: 16, maxWidth: '240px' }).setHTML(
+      const wrap = document.createElement('div');
+      wrap.className = 'portfolio-map-marker-wrap';
+      for (const cls of [
+        'portfolio-map-sonar-ring',
+        'portfolio-map-sonar-ring portfolio-map-sonar-ring--delay-1',
+        'portfolio-map-sonar-ring portfolio-map-sonar-ring--delay-2',
+      ]) {
+        const ring = document.createElement('div');
+        ring.className = cls;
+        wrap.appendChild(ring);
+      }
+      const dot = document.createElement('div');
+      dot.className = 'portfolio-map-marker-dot';
+      wrap.appendChild(dot);
+
+      const popup = new mapboxgl.Popup({ offset: 20, maxWidth: '240px' }).setHTML(
         `<div style="padding:4px 2px;font-family:system-ui,sans-serif;font-size:13px;">
           <div style="font-weight:600;margin-bottom:6px;color:#0f172a;">${escapeHtml(p.name)}</div>
           <a href="${href}" style="color:#0891b2;font-weight:600;text-decoration:underline;">Ver ficha</a>
         </div>`
       );
-      new mapboxgl.Marker({ element: el }).setLngLat([p.lng, p.lat]).setPopup(popup).addTo(map);
+      new mapboxgl.Marker({ element: wrap, anchor: 'center' })
+        .setLngLat([p.lng, p.lat])
+        .setPopup(popup)
+        .addTo(map);
     }
 
     if (points.length > 1) {

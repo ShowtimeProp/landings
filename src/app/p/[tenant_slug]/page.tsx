@@ -529,24 +529,6 @@ export default async function PortfolioPage({
           </div>
         </section>
 
-        {tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.') && (
-          <div className="mt-8">
-            <PortfolioMapLoader
-              accessToken={tenant.map.publicToken}
-              styleUrl={tenant.map.styleUrl}
-              tenantSlug={tenant.slug}
-              referralCode={referralCode}
-              campaignQueryString={campaignQueryString}
-              properties={properties}
-              theme={theme}
-              isLight={isLight}
-              sectionClass={sectionClass}
-              subtleTextClass={subtleTextClass}
-              titleTextClass={titleTextClass}
-            />
-          </div>
-        )}
-
         {hasReviewsContent && placeReviews && (
           <section className={`mt-6 rounded-2xl border p-5 sm:p-6 ${sectionClass}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -641,6 +623,24 @@ export default async function PortfolioPage({
             </div>
           )}
         </section>
+
+        {tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.') && (
+          <div className="mt-8">
+            <PortfolioMapLoader
+              accessToken={tenant.map.publicToken}
+              styleUrl={tenant.map.styleUrl}
+              tenantSlug={tenant.slug}
+              referralCode={referralCode}
+              campaignQueryString={campaignQueryString}
+              properties={properties}
+              theme={theme}
+              isLight={isLight}
+              sectionClass={sectionClass}
+              subtleTextClass={subtleTextClass}
+              titleTextClass={titleTextClass}
+            />
+          </div>
+        )}
 
         <section className={`mt-10 border-t pt-4 ${isLight ? 'border-zinc-200' : 'border-white/10'}`}>
           <p className={`text-[10px] leading-relaxed ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
