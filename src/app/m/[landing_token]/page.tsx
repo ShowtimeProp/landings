@@ -12,7 +12,7 @@ async function fetchMatchLanding(landingToken: string): Promise<MatchLandingPayl
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) return null;
   const data = (await res.json()) as MatchLandingPayload;
-  if (!data || data.status !== 'ok') return null;
+  if (!data) return null;
   return data;
 }
 
