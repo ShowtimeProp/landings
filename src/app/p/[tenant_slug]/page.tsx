@@ -521,16 +521,15 @@ export default async function PortfolioPage({
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 sm:pt-10">
-        <section className={`relative overflow-hidden rounded-2xl border p-6 sm:p-8 ${heroClass}`}>
+        <section className={`relative left-1/2 w-screen -translate-x-1/2 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
           <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl" />
-          <div className="relative z-10 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div className="relative z-10 mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Colección activa</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{tenant.name}</h1>
+              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Asesor de ventas</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtleTextClass}`}>
-                Explorá las propiedades disponibles con ficha rápida. Para una conversación completa con IA,
-                ingresá en cada propiedad.
+                Referente comercial de {tenant.name}. Podés contactar por WhatsApp, email o agendar sus datos con QR.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
@@ -547,9 +546,9 @@ export default async function PortfolioPage({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <div
-                className={`flex h-20 w-20 items-center justify-center overflow-hidden rounded-full ${
+                className={`flex h-28 w-28 items-center justify-center overflow-hidden rounded-full ${
                   isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
                 }`}
               >
@@ -557,11 +556,11 @@ export default async function PortfolioPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={tenant.profile_photo_url} alt={contactName} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-lg font-semibold">{contactName.charAt(0).toUpperCase()}</span>
+                  <span className="text-2xl font-semibold">{contactName.charAt(0).toUpperCase()}</span>
                 )}
               </div>
               <div className="space-y-2">
-                <p className={`text-sm font-medium ${titleTextClass}`}>Asesor: {contactName}</p>
+                <p className={`text-lg font-semibold ${titleTextClass}`}>{contactName}</p>
                 <PortfolioContactActions
                   backendUrl={BACKEND_URL}
                   tenantSlug={tenant.slug}
@@ -591,10 +590,10 @@ export default async function PortfolioPage({
                     <img
                       src={portfolioVcardQrDataUrl}
                       alt="QR Agenda mis datos"
-                      className="h-20 w-20 rounded-lg bg-white p-1 object-contain shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
+                      className="h-28 w-28 rounded-lg bg-white p-1 object-contain shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-white text-[10px] text-zinc-500">
+                    <div className="flex h-28 w-28 items-center justify-center rounded-lg bg-white text-[10px] text-zinc-500">
                       E-Card
                     </div>
                   )}
@@ -670,7 +669,10 @@ export default async function PortfolioPage({
         {portfolioMap ? (
           <section id="portfolio-grid" className="relative left-1/2 mt-8 grid w-screen -translate-x-1/2 gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(560px,0.95fr)] lg:items-start">
             <div className="hidden lg:sticky lg:top-5 lg:block">{portfolioMap}</div>
-            <div className="lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto lg:pr-1">
+            <div
+              className="lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto lg:pr-1 [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none' }}
+            >
               {portfolioGrid}
             </div>
           </section>

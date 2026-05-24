@@ -131,6 +131,25 @@ export default function PortfolioMapBlock({
       const popup = new mapboxgl.Popup({ offset: 22, maxWidth: '360px' }).setHTML(
         buildPopupHtml({ property: p, href, tenantName })
       );
+      popup.on('open', () => {
+        const popupEl = popup.getElement();
+        if (!popupEl) return;
+        const gallery = popupEl?.querySelector<HTMLElement>('.sp-map-gallery');
+        if (!gallery) return;
+        const scrollGallery = (direction: number) => {
+          gallery.scrollBy({ left: direction * gallery.clientWidth, behavior: 'smooth' });
+        };
+        popupEl.querySelector<HTMLButtonElement>('[data-sp-map-prev]')?.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          scrollGallery(-1);
+        });
+        popupEl.querySelector<HTMLButtonElement>('[data-sp-map-next]')?.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          scrollGallery(1);
+        });
+      });
       new mapboxgl.Marker({ element: wrap, anchor: 'center' })
         .setLngLat([p.lng, p.lat])
         .setPopup(popup)
@@ -278,9 +297,15 @@ function buildPopupHtml({
 }): string {
   const images = (property.images || []).map(getImageUrl).filter(Boolean).slice(0, 6).map(cloudinaryCard);
   const imageHtml = images.length
-    ? `<div class="sp-map-gallery">${images
-        .map((url, idx) => `<img src="${escapeAttribute(url)}" alt="${escapeAttribute(property.name)} ${idx + 1}" loading="lazy" />`)
-        .join('')}</div>`
+    ? `<div class="sp-map-gallery-wrap">
+        <div class="sp-map-gallery">${images
+          .map((url, idx) => `<img src="${escapeAttribute(url)}" alt="${escapeAttribute(property.name)} ${idx + 1}" loading="lazy" />`)
+          .join('')}</div>
+        ${images.length > 1 ? `
+          <button type="button" class="sp-map-gallery-nav sp-map-gallery-nav--prev" data-sp-map-prev aria-label="Foto anterior">‹</button>
+          <button type="button" class="sp-map-gallery-nav sp-map-gallery-nav--next" data-sp-map-next aria-label="Foto siguiente">›</button>
+        ` : ''}
+      </div>`
     : `<div class="sp-map-gallery-empty">Sin imagen</div>`;
   const dots = images.length > 1
     ? `<div class="sp-map-dots">${images.map(() => '<span></span>').join('')}</div>`
@@ -300,9 +325,15 @@ function buildPopupHtml({
       <style>
         .mapboxgl-popup-content{padding:0;border-radius:14px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.22);}
         .sp-map-popup{width:330px;background:#fff;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+        .sp-map-gallery-wrap{position:relative;background:#111827;}
         .sp-map-gallery{height:174px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#111827;scrollbar-width:none;}
         .sp-map-gallery::-webkit-scrollbar{display:none;}
         .sp-map-gallery img{width:100%;height:174px;flex:0 0 100%;object-fit:cover;scroll-snap-align:start;}
+        .sp-map-gallery-nav{position:absolute;top:50%;z-index:3;display:flex;height:36px;width:36px;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.65);border-radius:999px;background:rgba(255,255,255,.94);color:#111827;font-size:30px;line-height:1;box-shadow:0 8px 18px rgba(0,0,0,.20);opacity:0;transform:translateY(-50%);transition:opacity .18s ease, background .18s ease;}
+        .sp-map-gallery-wrap:hover .sp-map-gallery-nav{opacity:1;}
+        .sp-map-gallery-nav:hover{background:#fff;}
+        .sp-map-gallery-nav--prev{left:10px;}
+        .sp-map-gallery-nav--next{right:10px;}
         .sp-map-gallery-empty{height:154px;display:flex;align-items:center;justify-content:center;background:#111827;color:#9ca3af;font-size:13px;}
         .sp-map-dots{height:0;position:relative;top:-20px;display:flex;justify-content:center;gap:5px;}
         .sp-map-dots span{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.82);box-shadow:0 1px 3px rgba(0,0,0,.25);}
