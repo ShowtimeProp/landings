@@ -527,7 +527,21 @@ export default async function PortfolioPage({
           <div className="relative z-10 mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Asesor de ventas</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
+              <div className="mt-3 flex items-center gap-4 sm:gap-5">
+                <div
+                  className={`flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-32 sm:w-32 ${
+                    isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
+                  }`}
+                >
+                  {tenant.profile_photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={tenant.profile_photo_url} alt={contactName} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-semibold">{contactName.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
+              </div>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtleTextClass}`}>
                 Referente comercial de {tenant.name}. Podés contactar por WhatsApp, email o agendar sus datos con QR.
               </p>
@@ -547,20 +561,7 @@ export default async function PortfolioPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <div
-                className={`flex h-28 w-28 items-center justify-center overflow-hidden rounded-full ${
-                  isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
-                }`}
-              >
-                {tenant.profile_photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={tenant.profile_photo_url} alt={contactName} className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-2xl font-semibold">{contactName.charAt(0).toUpperCase()}</span>
-                )}
-              </div>
               <div className="space-y-2">
-                <p className={`text-lg font-semibold ${titleTextClass}`}>{contactName}</p>
                 <PortfolioContactActions
                   backendUrl={BACKEND_URL}
                   tenantSlug={tenant.slug}
