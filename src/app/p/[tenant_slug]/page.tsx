@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
+import OwnerCaptureCard from '@/components/OwnerCaptureCard';
 import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 import PortfolioTrackingBridge from '@/components/PortfolioTrackingBridge';
 import PortfolioContactActions from '@/components/PortfolioContactActions';
@@ -20,6 +21,21 @@ type TenantMapConfig = {
   enabled: boolean;
   styleUrl?: string | null;
   publicToken: string;
+};
+
+type OwnerCaptureConfig = {
+  enabled?: boolean;
+  front_title?: string | null;
+  front_text?: string | null;
+  front_cta?: string | null;
+  front_media_url?: string | null;
+  front_media_type?: 'image' | 'video' | 'none' | string | null;
+  back_title?: string | null;
+  back_text?: string | null;
+  back_cta?: string | null;
+  back_media_url?: string | null;
+  back_media_type?: 'image' | 'video' | 'none' | string | null;
+  accent_color?: string | null;
 };
 
 type Tenant = {
@@ -46,6 +62,7 @@ type Tenant = {
     gtm_container_id?: string | null;
     attribution_model?: string;
   } | null;
+  owner_capture?: OwnerCaptureConfig | null;
   map?: TenantMapConfig | null;
 };
 
@@ -599,6 +616,16 @@ export default async function PortfolioPage({
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {tenant.owner_capture?.enabled && (
+                <OwnerCaptureCard
+                  tenantSlug={tenant.slug}
+                  config={tenant.owner_capture}
+                  campaignQueryString={campaignQueryString}
+                  theme={theme}
+                  isLight={isLight}
+                  cardClass={cardClass}
+                />
+              )}
               {properties.map((item) => {
                 const propertyType = normalizeLabel(item.property_type, PROPERTY_TYPE_LABELS);
                 const operationType = normalizeLabel(item.operation_type, OPERATION_LABELS);

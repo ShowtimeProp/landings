@@ -1,0 +1,55 @@
+---
+description: Flujo oficial release/deploy GHCR+Swarm cuando el usuario pide build, push, release o deploy
+alwaysApply: true
+---
+
+# Release y deploy ShowtimeProp
+
+Cuando el usuario diga variantes de: "ok release", "build y push", "deploy", "subir versión", "hacer el release":
+
+## Reglas obligatorias
+
+1. **Nunca** `docker build` en el VPS para publicar. Siempre: commit → `release.sh` → GitHub Actions → `deploy.sh`.
+2. **Detectar repos tocados** con `git status` en cada `/srv/{backend-api,core-agent,crm-dashboard,landings,manager_api}`.
+3. **Proponer el próximo tag** con `/srv/scripts/next-tag.sh <prefijo>` desde cada repo:
+   - backend-api: `v1.1` → ej. v1.1.69
+   - core-agent: `v1.5`
+   - crm-dashboard: `v1.1`
+   - landings: `v1.0`
+   - manager-api: `v1.0`
+4. Pedir confirmación del usuario antes de `release.sh` si hay dudas.
+5. **Orden**: backend-api → core-agent → crm-dashboard → landings → manager-api.
+6. **Deploy siempre como `deploy`**: `sudo -u deploy docker pull ...` y `sudo -u deploy bash -lc "/srv/scripts/deploy.sh <alias> <tag>"`.
+7. Tras cada deploy, verificar: `docker service inspect <servicio> --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'`.
+8. Recordar actualizar imagen en **Portainer stack** al tag semver (no tags manuales tipo `drawer-*`).
+
+## Comandos por repo
+
+```bash
+cd /srv/<repo>
+git add -A && git commit -m "<mensaje>"
+git pull --rebase origin main   # crm-dashboard, landings, manager_api
+git push origin main
+/srv/scripts/release.sh <TAG> "<mensaje>"
+# Actions verde →
+sudo -u deploy bash -lc "/srv/scripts/deploy.sh <alias> <TAG>"
+```
+
+## Git por repo
+
+| Repo | Push |
+|------|------|
+| backend-api | `GIT_SSH_COMMAND='ssh -i /home/deploy/.ssh/github_deploy -o IdentitiesOnly=yes' git push` o HTTPS+PAT |
+| core-agent | HTTPS + PAT repo (deploy key solo backend-api) |
+| crm, landings, manager | `git pull --rebase` + `git push origin main` |
+
+## Pre-flight
+
+- `release.sh` exige **working tree limpio**.
+- Si `git push` → `rejected (fetch first)`: `git pull --rebase origin main` antes de release.
+- Si `docker pull` → `denied`: login como **deploy**, no root.
+- Si rebase conflict en core-agent: `git checkout --theirs main.py` suele ser la versión con handler `close`.
+
+## Documentación
+
+Ver `/srv/scripts/RELEASE-WORKFLOW.md` y `/srv/internal-docs/docs/REBUILD_INSTRUCTIONS.md`.
