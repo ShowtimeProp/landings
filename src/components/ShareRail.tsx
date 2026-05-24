@@ -119,7 +119,7 @@ export default function ShareRail({
   };
 
   return (
-    <div className="pointer-events-auto fixed left-0 z-[70] max-sm:bottom-24 max-sm:top-auto max-sm:translate-y-0 sm:top-[clamp(16rem,28vh,21rem)] sm:-translate-y-1/2">
+    <div className="pointer-events-auto fixed left-0 z-[70] max-sm:bottom-24 max-sm:top-auto max-sm:translate-y-0 sm:top-[clamp(13rem,22vh,18rem)] sm:-translate-y-1/2">
       <div className={`flex items-center transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-[calc(100%-2.8rem)]'}`}>
         <div
           className={`rounded-r-xl border-r border-y p-2 shadow-xl backdrop-blur ${
