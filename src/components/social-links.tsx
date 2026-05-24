@@ -162,12 +162,11 @@ export function TenantSocialLinks({
           rel="noreferrer"
           title={entry.label}
           aria-label={entry.label}
-          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition duration-300 ${baseButtonClass} ${entry.hoverColorClass}`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition duration-300 ${baseButtonClass} ${entry.hoverColorClass}`}
         >
-          <SocialNetworkIcon network={entry.key} />
+          <SocialNetworkIcon network={entry.key} className="h-5 w-5" />
         </a>
       ))}
     </div>
   );
 }
-

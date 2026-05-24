@@ -161,7 +161,7 @@ export default function PortfolioContactActions({
             target="_blank"
             rel="noreferrer"
             data-track-whatsapp="true"
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
+            className="inline-flex min-h-11 items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
           >
             WhatsApp
           </a>
@@ -172,7 +172,7 @@ export default function PortfolioContactActions({
             setOpen(true);
             setError(null);
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${emailButtonClass}`}
+          className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition ${emailButtonClass}`}
         >
           Email
         </button>

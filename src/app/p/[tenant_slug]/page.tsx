@@ -543,7 +543,7 @@ export default async function PortfolioPage({
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
               </div>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtleTextClass}`}>
-                Referente comercial de {tenant.name}. Podés contactar por WhatsApp, email o agendar sus datos con QR.
+                Referente comercial de Sumar Construcciones MDQ S.A. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
