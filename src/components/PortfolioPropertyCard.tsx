@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 
 type PortfolioTheme = 'dark' | 'soft' | 'light';
@@ -101,6 +101,7 @@ export default function PortfolioPropertyCard({
   const fallbackQuery = referralCode ? `ref=${encodeURIComponent(referralCode)}` : '';
   const query = (campaignQueryString || '').trim() || fallbackQuery;
   const href = query ? `${baseHref}?${query}` : baseHref;
+  const favoriteHref = `/perfil-lead/login?next=${encodeURIComponent(href)}&property_id=${encodeURIComponent(item.id)}`;
 
   const imageList = useMemo(() => {
     return (item.images || [])
@@ -112,11 +113,8 @@ export default function PortfolioPropertyCard({
   const [imageIndex, setImageIndex] = useState(0);
   const hasManyImages = imageList.length > 1;
 
-  useEffect(() => {
-    setImageIndex(0);
-  }, [item.id, imageList.length]);
-
-  const currentImage = imageList[imageIndex] || null;
+  const safeImageIndex = imageList.length ? Math.min(imageIndex, imageList.length - 1) : 0;
+  const currentImage = imageList[safeImageIndex] || null;
 
   const rawPriceMin = typeof item.price_min === 'number' ? item.price_min : null;
   const rawPriceMax = typeof item.price_max === 'number' ? item.price_max : null;
@@ -162,10 +160,10 @@ export default function PortfolioPropertyCard({
   };
 
   return (
-    <Link
-      href={href}
-      className={`group overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1.5 ${cardClass}`}
+    <article
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1.5 ${cardClass}`}
     >
+      <Link href={href} aria-label={`Ver detalle de ${item.name}`} className="absolute inset-0 z-10" />
       <div className={`relative aspect-[16/10] overflow-hidden ${isLight ? 'bg-zinc-200' : 'bg-zinc-950'}`}>
         {currentImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -215,7 +213,7 @@ export default function PortfolioPropertyCard({
                 <span
                   key={`${item.id}-dot-${idx}`}
                   className={`h-1.5 rounded-full transition ${
-                    idx === imageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
+                    idx === safeImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
                   }`}
                 />
               ))}
@@ -229,9 +227,19 @@ export default function PortfolioPropertyCard({
             Tour 360
           </span>
         )}
+        <Link
+          href={favoriteHref}
+          aria-label="Guardar favorito"
+          className="absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.55)] transition hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
+          </svg>
+        </Link>
       </div>
 
-      <div className="space-y-3 p-4">
+      <div className="relative space-y-3 p-4">
         <h2 className={`line-clamp-2 text-lg font-semibold leading-snug ${titleTextClass}`}>{item.name}</h2>
 
         <div className="flex flex-wrap gap-2">
@@ -271,6 +279,6 @@ export default function PortfolioPropertyCard({
           </span>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

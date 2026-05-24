@@ -87,6 +87,7 @@ type PropertyItem = {
   currency?: string | null;
   tour_virtual_url?: string | null;
   images?: unknown[];
+  address?: Record<string, unknown> | null;
   latitude?: number | null;
   longitude?: number | null;
 };
@@ -401,6 +402,63 @@ export default async function PortfolioPage({
     }
     return `/p/${tenant.slug}?${params.toString()}`;
   };
+  const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
+  const portfolioMap = hasPortfolioMap && tenant.map ? (
+    <PortfolioMapLoader
+      accessToken={tenant.map.publicToken}
+      styleUrl={tenant.map.styleUrl}
+      tenantSlug={tenant.slug}
+      tenantName={tenant.name}
+      referralCode={referralCode}
+      campaignQueryString={campaignQueryString}
+      properties={properties}
+      theme={theme}
+      isLight={isLight}
+      sectionClass={sectionClass}
+      subtleTextClass={subtleTextClass}
+      titleTextClass={titleTextClass}
+      fillViewport
+    />
+  ) : null;
+  const portfolioGrid = properties.length === 0 && !tenant.owner_capture?.enabled ? (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-10 text-center">
+      <p className="text-zinc-300">No hay propiedades publicadas por el momento.</p>
+    </div>
+  ) : (
+    <div className={`grid gap-5 ${hasPortfolioMap ? 'grid-cols-2 lg:grid-cols-2' : 'grid-cols-2 xl:grid-cols-3'}`}>
+      {tenant.owner_capture?.enabled && (
+        <OwnerCaptureCard
+          tenantSlug={tenant.slug}
+          config={tenant.owner_capture}
+          campaignQueryString={campaignQueryString}
+          theme={theme}
+          isLight={isLight}
+          cardClass={cardClass}
+        />
+      )}
+      {properties.map((item) => {
+        const propertyType = normalizeLabel(item.property_type, PROPERTY_TYPE_LABELS);
+        const operationType = normalizeLabel(item.operation_type, OPERATION_LABELS);
+
+        return (
+          <PortfolioPropertyCard
+            key={item.id}
+            tenantSlug={tenant.slug}
+            referralCode={referralCode}
+            campaignQueryString={campaignQueryString}
+            item={item}
+            theme={theme}
+            isLight={isLight}
+            cardClass={cardClass}
+            titleTextClass={titleTextClass}
+            badgeBaseClass={badgeBaseClass}
+            propertyType={propertyType}
+            operationType={operationType}
+          />
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className={`min-h-screen ${rootClass}`}>
@@ -609,64 +667,17 @@ export default async function PortfolioPage({
           </section>
         )}
 
-        <section id="portfolio-grid" className="mt-8">
-          {properties.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-10 text-center">
-              <p className="text-zinc-300">No hay propiedades publicadas por el momento.</p>
+        {portfolioMap ? (
+          <section id="portfolio-grid" className="relative left-1/2 mt-8 grid w-screen -translate-x-1/2 gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(560px,0.95fr)] lg:items-start">
+            <div className="hidden lg:sticky lg:top-5 lg:block">{portfolioMap}</div>
+            <div className="lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto lg:pr-1">
+              {portfolioGrid}
             </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {tenant.owner_capture?.enabled && (
-                <OwnerCaptureCard
-                  tenantSlug={tenant.slug}
-                  config={tenant.owner_capture}
-                  campaignQueryString={campaignQueryString}
-                  theme={theme}
-                  isLight={isLight}
-                  cardClass={cardClass}
-                />
-              )}
-              {properties.map((item) => {
-                const propertyType = normalizeLabel(item.property_type, PROPERTY_TYPE_LABELS);
-                const operationType = normalizeLabel(item.operation_type, OPERATION_LABELS);
-
-                return (
-                  <PortfolioPropertyCard
-                    key={item.id}
-                    tenantSlug={tenant.slug}
-                    referralCode={referralCode}
-                    campaignQueryString={campaignQueryString}
-                    item={item}
-                    theme={theme}
-                    isLight={isLight}
-                    cardClass={cardClass}
-                    titleTextClass={titleTextClass}
-                    badgeBaseClass={badgeBaseClass}
-                    propertyType={propertyType}
-                    operationType={operationType}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.') && (
-          <div className="mt-8">
-            <PortfolioMapLoader
-              accessToken={tenant.map.publicToken}
-              styleUrl={tenant.map.styleUrl}
-              tenantSlug={tenant.slug}
-              referralCode={referralCode}
-              campaignQueryString={campaignQueryString}
-              properties={properties}
-              theme={theme}
-              isLight={isLight}
-              sectionClass={sectionClass}
-              subtleTextClass={subtleTextClass}
-              titleTextClass={titleTextClass}
-            />
-          </div>
+          </section>
+        ) : (
+          <section id="portfolio-grid" className="mt-8">
+            {portfolioGrid}
+          </section>
         )}
 
         <section className={`mt-10 border-t pt-4 ${isLight ? 'border-zinc-200' : 'border-white/10'}`}>
