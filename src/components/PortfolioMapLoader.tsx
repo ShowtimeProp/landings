@@ -49,6 +49,9 @@ export default function PortfolioMapLoader(props: {
   subtleTextClass: string;
   titleTextClass: string;
   fillViewport?: boolean;
+  mapHeightClass?: string;
+  title?: string;
+  subtitle?: string;
 }) {
   return <PortfolioMapBlock {...props} />;
 }

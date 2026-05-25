@@ -185,6 +185,12 @@ function normalizeTheme(raw: string | null | undefined): PortfolioTheme {
   return 'dark';
 }
 
+function nextTheme(theme: PortfolioTheme): PortfolioTheme {
+  if (theme === 'dark') return 'soft';
+  if (theme === 'soft') return 'light';
+  return 'dark';
+}
+
 function normalizeReferralCode(raw?: string | null): string | null {
   const value = String(raw || '').trim().toLowerCase();
   if (!value) return null;
@@ -403,6 +409,7 @@ export default async function PortfolioPage({
     }
     return `/p/${tenant.slug}?${params.toString()}`;
   };
+  const mobileThemeHref = themeHref(nextTheme(theme));
   const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
   const portfolioMap = hasPortfolioMap && tenant.map ? (
     <PortfolioMapLoader
@@ -426,7 +433,7 @@ export default async function PortfolioPage({
       <p className="text-zinc-300">No hay propiedades publicadas por el momento.</p>
     </div>
   ) : (
-    <div className={`grid gap-5 ${hasPortfolioMap ? 'grid-cols-2 lg:grid-cols-2' : 'grid-cols-2 xl:grid-cols-3'}`}>
+    <div className={`grid gap-5 ${hasPortfolioMap ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}`}>
       {tenant.owner_capture?.enabled && (
         <OwnerCaptureCard
           tenantSlug={tenant.slug}
@@ -490,8 +497,44 @@ export default async function PortfolioPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href={mobileThemeHref}
+              aria-label="Cambiar tema"
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full sm:hidden ${
+                isLight ? 'border border-zinc-200 bg-zinc-100 text-zinc-900' : 'border border-white/15 bg-white/5 text-zinc-100'
+              }`}
+            >
+              {theme === 'dark' ? (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              ) : theme === 'soft' ? (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
+                  />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+              )}
+            </Link>
             <nav
-              className={`flex items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+              className={`hidden items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:flex ${
                 isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
               }`}
             >
@@ -514,7 +557,7 @@ export default async function PortfolioPage({
                 Dark
               </Link>
             </nav>
-            <span className={`rounded-full border px-3 py-1 text-xs ${headerBadgeClass}`}>
+            <span className={`hidden rounded-full border px-3 py-1 text-xs sm:inline-flex ${headerBadgeClass}`}>
               {properties.length} propiedades
             </span>
           </div>
@@ -548,7 +591,7 @@ export default async function PortfolioPage({
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
-                  {properties.length} publicaciones
+                  {properties.length} propiedades
                 </span>
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
                   {toursCount} tours virtuales

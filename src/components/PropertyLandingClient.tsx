@@ -1025,6 +1025,9 @@ export function PropertyLandingClient({
                 subtleTextClass={mapSubtleClass}
                 titleTextClass={mapTitleClass}
                 fillViewport={false}
+                mapHeightClass="h-[min(62vh,560px)]"
+                title="Ubicación"
+                subtitle="Tomá esta ubicación como referencia geográfica. Podés acercar o mover el mapa para explorar la zona."
               />
             ) : (
               <div className={`rounded-2xl border p-5 sm:p-6 ${mapSectionClass}`}>

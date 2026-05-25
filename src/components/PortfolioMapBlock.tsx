@@ -6,6 +6,22 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 export type PortfolioTheme = 'dark' | 'soft' | 'light';
 
+const MAPBOX_SPANISH_LOCALE = {
+  'AttributionControl.ToggleAttribution': 'Alternar atribución',
+  'FullscreenControl.Enter': 'Entrar en pantalla completa',
+  'FullscreenControl.Exit': 'Salir de pantalla completa',
+  'GeolocateControl.FindMyLocation': 'Encontrar mi ubicación',
+  'GeolocateControl.LocationNotAvailable': 'Ubicación no disponible',
+  'LogoControl.Title': 'Mapa de Mapbox',
+  'Map.Title': 'Mapa',
+  'NavigationControl.ResetBearing': 'Restablecer orientación',
+  'NavigationControl.ZoomIn': 'Acercar',
+  'NavigationControl.ZoomOut': 'Alejar',
+  'ScrollZoomBlocker.CtrlMessage': 'Usá Ctrl + scroll para hacer zoom en el mapa',
+  'ScrollZoomBlocker.CmdMessage': 'Usá Cmd + scroll para hacer zoom en el mapa',
+  'TouchPanBlocker.Message': 'Usá dos dedos para mover el mapa',
+} as const;
+
 type PropertyLike = {
   id: string;
   name: string;
@@ -60,6 +76,9 @@ export default function PortfolioMapBlock({
   subtleTextClass,
   titleTextClass,
   fillViewport,
+  mapHeightClass,
+  title = 'Mapa del portfolio',
+  subtitle = 'Ubicaciones aproximadas. Tocá un punto para abrir la ficha.',
 }: {
   accessToken: string;
   styleUrl?: string | null;
@@ -74,6 +93,9 @@ export default function PortfolioMapBlock({
   subtleTextClass: string;
   titleTextClass: string;
   fillViewport?: boolean;
+  mapHeightClass?: string;
+  title?: string;
+  subtitle?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -103,6 +125,7 @@ export default function PortfolioMapBlock({
       zoom: points.length === 1 ? 13 : 11,
       attributionControl: true,
       cooperativeGestures: true,
+      locale: MAPBOX_SPANISH_LOCALE,
     });
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: false }), 'top-right');
 
@@ -176,10 +199,8 @@ export default function PortfolioMapBlock({
   return (
     <section className={`rounded-2xl border p-5 sm:p-6 ${fillViewport ? 'lg:flex lg:h-[calc(100vh-2.5rem)] lg:flex-col' : ''} ${sectionClass}`}>
       <div className="mb-4">
-        <h2 className={`text-xl font-semibold ${titleTextClass}`}>Mapa del portfolio</h2>
-        <p className={`mt-1 text-sm ${subtleTextClass}`}>
-          Ubicaciones aproximadas. Tocá un punto para abrir la ficha.
-        </p>
+        <h2 className={`text-xl font-semibold ${titleTextClass}`}>{title}</h2>
+        <p className={`mt-1 text-sm ${subtleTextClass}`}>{subtitle}</p>
       </div>
       {points.length === 0 ? (
         <div className={`rounded-xl border px-4 py-8 text-center text-sm ${emptyHintClass}`}>
@@ -189,7 +210,7 @@ export default function PortfolioMapBlock({
       ) : (
         <div
           ref={containerRef}
-          className={`h-[min(52vh,420px)] w-full min-h-[280px] overflow-hidden rounded-xl border border-white/10 ${fillViewport ? 'lg:flex-1' : ''}`}
+          className={`${mapHeightClass || 'h-[min(52vh,420px)]'} w-full min-h-[280px] overflow-hidden rounded-xl border border-white/10 ${fillViewport ? 'lg:flex-1' : ''}`}
         />
       )}
     </section>

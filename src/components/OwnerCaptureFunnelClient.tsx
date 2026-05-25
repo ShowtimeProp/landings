@@ -221,6 +221,9 @@ export default function OwnerCaptureFunnelClient({
   const fieldClass = isLight
     ? 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-cyan-500'
     : 'border-white/10 bg-black/30 text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-300';
+  const selectFieldClass = isLight
+    ? 'border-zinc-200 bg-white text-zinc-900 focus:border-cyan-500'
+    : 'border-white/12 bg-zinc-950 text-zinc-100 focus:border-cyan-300';
   const labelTextClass = isLight ? 'text-zinc-700' : 'text-zinc-300';
   const helperTextClass = isLight ? 'text-zinc-500' : 'text-zinc-400';
   const themeNavItemClass = isLight
@@ -329,7 +332,12 @@ export default function OwnerCaptureFunnelClient({
                   </label>
                   <label className="space-y-1 text-sm">
                     <span className={labelTextClass}>Estado</span>
-                    <select className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.condition} onChange={(e) => update('condition', e.target.value)}>
+                    <select
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
+                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
+                      value={form.condition}
+                      onChange={(e) => update('condition', e.target.value)}
+                    >
                       <option value="">Seleccionar</option>
                       <option value="excelente">Excelente</option>
                       <option value="muy_bueno">Muy bueno</option>
@@ -338,7 +346,12 @@ export default function OwnerCaptureFunnelClient({
                   </label>
                   <label className="space-y-1 text-sm">
                     <span className={labelTextClass}>Urgencia</span>
-                    <select className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.urgency} onChange={(e) => update('urgency', e.target.value)}>
+                    <select
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
+                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
+                      value={form.urgency}
+                      onChange={(e) => update('urgency', e.target.value)}
+                    >
                       <option value="">Seleccionar</option>
                       <option value="ahora">Ahora</option>
                       <option value="30_60_dias">30 a 60 dias</option>
@@ -351,7 +364,12 @@ export default function OwnerCaptureFunnelClient({
                   </label>
                   <label className="space-y-1 text-sm">
                     <span className={labelTextClass}>Moneda</span>
-                    <select className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.price_currency} onChange={(e) => update('price_currency', e.target.value)}>
+                    <select
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
+                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
+                      value={form.price_currency}
+                      onChange={(e) => update('price_currency', e.target.value)}
+                    >
                       <option value="USD">USD</option>
                       <option value="ARS">ARS</option>
                     </select>
