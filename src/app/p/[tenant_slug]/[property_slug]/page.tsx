@@ -29,6 +29,11 @@ type PublicTenant = {
   contact_ref_code?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
+  map?: {
+    enabled: boolean;
+    styleUrl?: string | null;
+    publicToken: string;
+  } | null;
   marketing?: {
     gtm_enabled?: boolean;
     gtm_container_id?: string | null;

@@ -18,12 +18,55 @@ type OwnerCaptureConfig = {
   back_media_url?: string | null;
   back_media_type?: string | null;
   accent_color?: string | null;
+  button_text_color?: string | null;
 };
 
 function buildHref(tenantSlug: string, intent: 'seller' | 'landlord', campaignQueryString?: string) {
   const params = new URLSearchParams(campaignQueryString || '');
   params.set('intent', intent);
   return `/captacion/${tenantSlug}?${params.toString()}`;
+}
+
+function buildBunnyEmbedUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    const host = url.hostname.replace(/^www\./, '');
+    const isBunnyHost =
+      host === 'iframe.mediadelivery.net' ||
+      host === 'player.mediadelivery.net' ||
+      host.endsWith('.mediadelivery.net');
+    if (!isBunnyHost) return null;
+
+    const parts = url.pathname.split('/').filter(Boolean);
+    let libraryId = '';
+    let videoId = '';
+
+    if (parts[0] === 'play' && parts.length >= 3) {
+      libraryId = parts[1] || '';
+      videoId = parts[2] || '';
+    } else if (parts[0] === 'embed' && parts.length >= 3) {
+      libraryId = parts[1] || '';
+      videoId = parts[2] || '';
+    }
+
+    if (!libraryId || !videoId) return null;
+
+    const params = new URLSearchParams();
+    params.set('autoplay', 'true');
+    params.set('loop', 'true');
+    params.set('muted', 'true');
+    params.set('playsinline', 'true');
+    params.set('preload', 'true');
+    params.set('compactControls', 'true');
+    params.set('showSpeed', 'false');
+
+    return `https://player.mediadelivery.net/embed/${libraryId}/${videoId}?${params.toString()}`;
+  } catch {
+    return null;
+  }
 }
 
 function MediaLayer({
@@ -40,6 +83,18 @@ function MediaLayer({
   const mediaUrl = String(url || '').trim();
   const mediaType = String(type || '').trim().toLowerCase();
   if (mediaUrl && mediaType === 'video') {
+    const bunnyEmbedUrl = buildBunnyEmbedUrl(mediaUrl);
+    if (bunnyEmbedUrl) {
+      return (
+        <iframe
+          title={label}
+          src={bunnyEmbedUrl}
+          className="absolute inset-0 h-full w-full border-0 object-cover"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      );
+    }
     return (
       <video
         className="absolute inset-0 h-full w-full object-cover"
@@ -88,6 +143,9 @@ export default function OwnerCaptureCard({
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(config.accent_color || ''))
     ? String(config.accent_color)
     : '#22d3ee';
+  const buttonTextColor = /^#[0-9a-fA-F]{6}$/.test(String(config.button_text_color || ''))
+    ? String(config.button_text_color)
+    : '#111827';
   const sellerHref = useMemo(
     () => buildHref(tenantSlug, 'seller', campaignQueryString),
     [tenantSlug, campaignQueryString]
@@ -107,8 +165,8 @@ export default function OwnerCaptureCard({
     ? 'border-zinc-200 bg-white/85 text-zinc-700'
     : 'border-white/20 bg-black/30 text-white/85';
   const overlayClass = isLight
-    ? 'bg-gradient-to-t from-white via-white/70 to-white/10'
-    : 'bg-gradient-to-t from-black via-black/55 to-black/10';
+    ? 'bg-gradient-to-t from-white via-white/58 to-white/6'
+    : 'bg-gradient-to-t from-black via-black/42 to-black/8';
 
   const renderFace = (side: 'front' | 'back') => {
     const isBack = side === 'back';
@@ -158,8 +216,8 @@ export default function OwnerCaptureCard({
             <Link
               href={href}
               onClick={(event) => event.stopPropagation()}
-              className="mt-5 inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-zinc-950 shadow-[0_14px_30px_rgba(0,0,0,0.20)] transition hover:-translate-y-0.5"
-              style={{ backgroundColor: accent }}
+              className="mt-5 inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold shadow-[0_14px_30px_rgba(0,0,0,0.20)] transition hover:-translate-y-0.5"
+              style={{ backgroundColor: accent, color: buttonTextColor }}
             >
               {cta}
             </Link>

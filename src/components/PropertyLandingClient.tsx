@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createElement } from 'react';
 import Script from 'next/script';
 import ShareRail from '@/components/ShareRail';
+import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
 import {
   CampaignParams,
@@ -84,6 +85,11 @@ type Tenant = {
   contact_ref_code?: string | null;
   google_place_id?: string | null;
   google_calendar_connected?: boolean;
+  map?: {
+    enabled: boolean;
+    styleUrl?: string | null;
+    publicToken: string;
+  } | null;
 };
 
 declare global {
@@ -404,16 +410,47 @@ export function PropertyLandingClient({
     : property.price != null
     ? formatMoney(property.price)
     : null;
-  const mapQuery =
+  const hasMapboxMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
+  const mapboxProperties =
     property.latitude != null && property.longitude != null
-      ? `${property.latitude},${property.longitude}`
-      : fullAddress;
-  const googleMapsUrl = mapQuery
-    ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}`
-    : '';
-  const googleMapsEmbedUrl = mapQuery
-    ? `${googleMapsUrl}&z=17&output=embed`
-    : '';
+      ? [
+          {
+            id: property.id,
+            name: property.name,
+            slug: property.slug,
+            property_type: property.property_type,
+            operation_type: property.operation_type,
+            bedrooms: property.bedrooms,
+            bathrooms: property.bathrooms,
+            ambientes: property.ambientes,
+            area_sqm: property.area_sqm,
+            area_sqm_min: property.area_sqm_min,
+            area_sqm_max: property.area_sqm_max,
+            price: property.price,
+            price_min: property.price_min,
+            price_max: property.price_max,
+            price_on_request: property.price_on_request,
+            currency: property.currency,
+            images: property.images,
+            address: property.address,
+            latitude: property.latitude,
+            longitude: property.longitude,
+          },
+        ]
+      : [];
+  const mapSectionClass =
+    themeMode === 'light'
+      ? 'border-zinc-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.10)]'
+      : 'border-white/10 bg-zinc-900/70 shadow-[0_12px_35px_rgba(0,0,0,0.28)]';
+  const mapTitleClass = isLight ? 'text-zinc-900' : 'text-zinc-100';
+  const mapSubtleClass = isLight ? 'text-zinc-600' : 'text-zinc-300';
+  const mapLinkClass = isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-zinc-200';
+  const mapFrameClass =
+    themeMode === 'light'
+      ? 'border-zinc-200 bg-zinc-50 shadow-[0_10px_26px_rgba(15,23,42,0.06)]'
+      : themeMode === 'soft'
+      ? 'border-slate-500/55 bg-slate-800/55 shadow-[0_10px_28px_rgba(2,6,23,0.30)]'
+      : 'border-zinc-700/95 bg-zinc-900/55 shadow-[0_12px_34px_rgba(0,0,0,0.44)]';
 
   const presentationText = `La oficina virtual de ${tenant.name} comercializa ${propType.toLowerCase()} en ${addr?.city || 'la zona'}. Descubrí cada detalle en su visita virtual y viví una experiencia única.`;
   const revealClass = (id: string) =>
@@ -970,38 +1007,59 @@ export function PropertyLandingClient({
           </section>
         )}
 
-        {googleMapsEmbedUrl && (
+        {(hasMapboxMap || fullAddress) && (
           <section
             data-reveal-id="location"
             className={`mx-auto max-w-5xl px-4 py-12 sm:px-6 ${revealClass('location')}`}
           >
-            <h2 className="mb-6 text-2xl font-bold">Ubicación</h2>
-            <div
-              className={`aspect-video overflow-hidden rounded-xl border transition duration-300 hover:-translate-y-0.5 ${interactiveCardClass}`}
-            >
-              <iframe
-                title="Mapa"
-                src={googleMapsEmbedUrl}
-                className="h-full w-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
+            {hasMapboxMap && mapboxProperties.length > 0 ? (
+              <PortfolioMapLoader
+                accessToken={tenant.map!.publicToken}
+                styleUrl={tenant.map?.styleUrl}
+                tenantSlug={tenant.slug}
+                tenantName={tenant.name}
+                properties={mapboxProperties}
+                theme={themeMode}
+                isLight={isLight}
+                sectionClass={mapSectionClass}
+                subtleTextClass={mapSubtleClass}
+                titleTextClass={mapTitleClass}
+                fillViewport={false}
               />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              {fullAddress && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Tomá esta dirección como punto de referencia geográfica.
-                </p>
-              )}
-              <a
-                href={googleMapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block text-sm text-zinc-600 underline dark:text-zinc-400"
-              >
-                Ver en Google Maps
-              </a>
-            </div>
+            ) : (
+              <div className={`rounded-2xl border p-5 sm:p-6 ${mapSectionClass}`}>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-semibold ${mapTitleClass}`}>Ubicación</h2>
+                  <p className={`mt-1 text-sm ${mapSubtleClass}`}>
+                    Tomá esta dirección como punto de referencia geográfica.
+                  </p>
+                </div>
+                <div
+                  className={`aspect-video overflow-hidden rounded-xl border transition duration-300 hover:-translate-y-0.5 ${mapFrameClass}`}
+                >
+                  <iframe
+                    title="Mapa"
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(fullAddress)}&z=17&output=embed`}
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className={`text-sm ${mapSubtleClass}`}>
+                    La ubicación se muestra de forma aproximada para preservar la privacidad y orientar la visita.
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps?q=${encodeURIComponent(fullAddress)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`inline-block text-sm underline ${mapLinkClass}`}
+                  >
+                    Ver en Google Maps
+                  </a>
+                </div>
+              </div>
+            )}
           </section>
         )}
 

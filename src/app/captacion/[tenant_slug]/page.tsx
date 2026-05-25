@@ -20,6 +20,7 @@ type OwnerCaptureConfig = {
   back_media_url?: string | null;
   back_media_type?: string | null;
   accent_color?: string | null;
+  button_text_color?: string | null;
 };
 
 type PortfolioResponse = {

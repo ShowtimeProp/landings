@@ -36,6 +36,7 @@ type OwnerCaptureConfig = {
   back_media_url?: string | null;
   back_media_type?: 'image' | 'video' | 'none' | string | null;
   accent_color?: string | null;
+  button_text_color?: string | null;
 };
 
 type Tenant = {
