@@ -193,8 +193,11 @@ export default function OwnerCaptureCard({
     return (
       <div
         className={`absolute inset-0 overflow-hidden rounded-2xl ${faceClass} ${
-          isBack ? '[transform:rotateY(180deg)] [backface-visibility:hidden]' : '[backface-visibility:hidden]'
+          isBack
+            ? `[transform:rotateY(180deg)] ${flipped ? 'opacity-100 visible' : 'opacity-0 invisible'}`
+            : `${flipped ? 'opacity-0 invisible' : 'opacity-100 visible'}`
         }`}
+        style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
       >
         <MediaLayer url={mediaUrl} type={mediaType} label={title} isLight={isLight} />
         <div className={`absolute inset-0 ${overlayClass}`} />
@@ -255,7 +258,11 @@ export default function OwnerCaptureCard({
           }
         }}
         className="relative min-h-[360px] cursor-pointer outline-none [transform-style:preserve-3d] transition-transform duration-500 focus-visible:ring-2 focus-visible:ring-cyan-300"
-        style={{ transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+        style={{
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          transformStyle: 'preserve-3d',
+          WebkitTransformStyle: 'preserve-3d',
+        }}
       >
         {renderFace('front')}
         {renderFace('back')}
