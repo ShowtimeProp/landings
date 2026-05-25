@@ -86,13 +86,22 @@ function MediaLayer({
     const bunnyEmbedUrl = buildBunnyEmbedUrl(mediaUrl);
     if (bunnyEmbedUrl) {
       return (
-        <iframe
-          title={label}
-          src={bunnyEmbedUrl}
-          className="absolute inset-0 h-full w-full border-0 object-cover"
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-        />
+        <div className="absolute inset-0 overflow-hidden rounded-2xl">
+          <iframe
+            title={label}
+            src={bunnyEmbedUrl}
+            className="absolute inset-0 z-0 block h-full w-full border-0 pointer-events-none"
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'block',
+              transform: 'scale(1.06)',
+              transformOrigin: 'center center',
+            }}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+        </div>
       );
     }
     return (
