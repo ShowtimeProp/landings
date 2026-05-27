@@ -112,6 +112,8 @@ export default function PortfolioPropertyCard({
 
   const [imageIndex, setImageIndex] = useState(0);
   const hasManyImages = imageList.length > 1;
+  const tourUrl = (item.tour_virtual_url || '').trim();
+  const hasTourPreview = Boolean(tourUrl);
 
   const safeImageIndex = imageList.length ? Math.min(imageIndex, imageList.length - 1) : 0;
   const currentImage = imageList[safeImageIndex] || null;
@@ -165,7 +167,19 @@ export default function PortfolioPropertyCard({
     >
       <Link href={href} aria-label={`Ver detalle de ${item.name}`} className="absolute inset-0 z-10" />
       <div className={`relative aspect-[16/10] overflow-hidden ${isLight ? 'bg-zinc-200' : 'bg-zinc-950'}`}>
-        {currentImage ? (
+        {hasTourPreview ? (
+          <>
+            <iframe
+              src={tourUrl}
+              title={`Tour virtual - ${item.name}`}
+              className="pointer-events-none h-full w-full scale-[1.01] border-0"
+              allow="fullscreen; autoplay; clipboard-write; gyroscope; accelerometer"
+              loading="lazy"
+              tabIndex={-1}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-black/10" />
+          </>
+        ) : currentImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={currentImage}
@@ -178,7 +192,7 @@ export default function PortfolioPropertyCard({
           </div>
         )}
 
-        {hasManyImages && (
+        {!hasTourPreview && hasManyImages && (
           <>
             <button
               type="button"
@@ -221,8 +235,8 @@ export default function PortfolioPropertyCard({
           </>
         )}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-        {item.tour_virtual_url && (
+        {!hasTourPreview && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />}
+        {hasTourPreview && (
           <span className="absolute left-3 top-3 rounded-full border border-cyan-300/45 bg-cyan-400/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
             Tour 360
           </span>

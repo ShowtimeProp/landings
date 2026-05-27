@@ -110,7 +110,15 @@ export function captureFirstTouchCampaign(
   const normalizedIncoming = normalizeCampaignParams(incoming);
   const existing = readStoredCampaign(tenantSlug);
   const merged: CampaignParams = { ...existing };
+  if (normalizedIncoming.ref) {
+    merged.ref = normalizedIncoming.ref;
+  } else {
+    delete merged.ref;
+  }
   for (const key of CAMPAIGN_KEYS) {
+    if (key === "ref") {
+      continue;
+    }
     if (!merged[key] && normalizedIncoming[key]) {
       merged[key] = normalizedIncoming[key];
     }

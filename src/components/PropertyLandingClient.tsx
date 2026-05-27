@@ -15,7 +15,7 @@ import {
 import QRCode from 'qrcode';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
-const WIDGET_ASSET_VERSION = 'livekit-orbs-v3-20260321';
+const WIDGET_ASSET_VERSION = 'agent-orbs-v3-20260321';
 
 type Property = {
   id: string;
