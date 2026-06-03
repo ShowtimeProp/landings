@@ -209,6 +209,8 @@ const CAMPAIGN_QUERY_KEYS = [
   'utm_campaign',
   'utm_content',
   'utm_term',
+  'property_id',
+  'marketing_campaign_id',
   'fbclid',
   'gclid',
   'gbraid',

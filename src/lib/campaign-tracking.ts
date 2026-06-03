@@ -5,6 +5,8 @@ export type CampaignParams = {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  property_id?: string;
+  marketing_campaign_id?: string;
   fbclid?: string;
   gclid?: string;
   gbraid?: string;
@@ -18,6 +20,8 @@ const CAMPAIGN_KEYS: (keyof CampaignParams)[] = [
   "utm_campaign",
   "utm_content",
   "utm_term",
+  "property_id",
+  "marketing_campaign_id",
   "fbclid",
   "gclid",
   "gbraid",
@@ -31,6 +35,8 @@ const KEY_LIMITS: Record<keyof CampaignParams, number> = {
   utm_campaign: 160,
   utm_content: 160,
   utm_term: 120,
+  property_id: 80,
+  marketing_campaign_id: 80,
   fbclid: 200,
   gclid: 200,
   gbraid: 200,
