@@ -83,6 +83,10 @@ export function campaignParamsFromSearchParams(
   return normalizeCampaignParams(raw);
 }
 
+function hasCampaignParams(params: CampaignParams): boolean {
+  return CAMPAIGN_KEYS.some((key) => Boolean(params[key]));
+}
+
 function storageKey(tenantSlug: string): string {
   const slug = String(tenantSlug || "").trim().toLowerCase() || "default";
   return `sp-campaign-first-touch:${slug}`;
@@ -139,6 +143,30 @@ export function captureCampaignFromLocation(tenantSlug: string): CampaignParams 
     new URLSearchParams(window.location.search)
   );
   return captureFirstTouchCampaign(tenantSlug, incoming);
+}
+
+export function captureCurrentCampaignFromLocation(tenantSlug: string): CampaignParams {
+  if (typeof window === "undefined") return {};
+  const incoming = campaignParamsFromSearchParams(
+    new URLSearchParams(window.location.search)
+  );
+  if (hasCampaignParams(incoming)) {
+    captureFirstTouchCampaign(tenantSlug, incoming);
+    return incoming;
+  }
+  return readStoredCampaign(tenantSlug);
+}
+
+export function campaignIdentityKey(params: CampaignParams): string {
+  const normalized = normalizeCampaignParams(params);
+  return (
+    normalized.marketing_campaign_id ||
+    normalized.utm_campaign ||
+    normalized.ref ||
+    normalized.gclid ||
+    normalized.fbclid ||
+    "organic"
+  ).replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 120);
 }
 
 export function campaignParamsToQueryString(params: CampaignParams): string {

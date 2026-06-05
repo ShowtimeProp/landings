@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { captureCampaignFromLocation } from "@/lib/campaign-tracking";
+import { useEffect } from "react";
+import {
+  campaignIdentityKey,
+  captureCurrentCampaignFromLocation,
+} from "@/lib/campaign-tracking";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -12,14 +15,10 @@ type Props = {
 };
 
 export default function PortfolioTrackingBridge({ tenantId, tenantSlug }: Props) {
-  const sessionKey = useMemo(
-    () => `sp-portfolio-view:${tenantSlug}`,
-    [tenantSlug]
-  );
-
   useEffect(() => {
     if (!tenantId || !tenantSlug) return;
-    const campaign = captureCampaignFromLocation(tenantSlug);
+    const campaign = captureCurrentCampaignFromLocation(tenantSlug);
+    const sessionKey = `sp-portfolio-view:${tenantSlug}:${campaignIdentityKey(campaign)}`;
 
     const track = async (eventType: "portfolio_view" | "whatsapp_click") => {
       await fetch(`${BACKEND_URL}/api/track`, {
@@ -51,7 +50,7 @@ export default function PortfolioTrackingBridge({ tenantId, tenantSlug }: Props)
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [sessionKey, tenantId, tenantSlug]);
+  }, [tenantId, tenantSlug]);
 
   return null;
 }

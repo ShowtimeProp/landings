@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import TenantGtm from "@/components/TenantGtm";
 import {
   appendCampaignParamsToUrl,
-  captureCampaignFromLocation,
+  captureCurrentCampaignFromLocation,
 } from "@/lib/campaign-tracking";
 
 const BACKEND_URL =
@@ -29,7 +29,7 @@ export default function SlotLoaderPage() {
 
     const run = async () => {
       try {
-        const campaign = captureCampaignFromLocation(tenantSlug);
+        const campaign = captureCurrentCampaignFromLocation(tenantSlug);
         const visitorId =
           typeof crypto !== "undefined" && crypto.randomUUID
             ? crypto.randomUUID()

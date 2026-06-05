@@ -9,8 +9,9 @@ import { TenantSocialLinks } from '@/components/social-links';
 import {
   CampaignParams,
   buildTrackedWhatsappUrl,
+  campaignIdentityKey,
   campaignParamsFromSearchParams,
-  captureCampaignFromLocation,
+  captureCurrentCampaignFromLocation,
 } from '@/lib/campaign-tracking';
 import QRCode from 'qrcode';
 
@@ -210,15 +211,17 @@ export function PropertyLandingClient({
     open_now?: boolean | null;
     opening_hours?: string[];
   } | null>(null);
-  const [generatedVcardQrDataUrl, setGeneratedVcardQrDataUrl] = useState('');
-  const [isGeneratingVcardQr, setIsGeneratingVcardQr] = useState(false);
-  const [campaign, setCampaign] = useState<CampaignParams>(() => {
+  const [generatedVcardQr, setGeneratedVcardQr] = useState<{
+    vcardUrl: string;
+    dataUrl: string;
+    failed: boolean;
+  } | null>(null);
+  const [campaign] = useState<CampaignParams>(() => {
     if (typeof window === 'undefined') return {};
+    if (tenant.slug) return captureCurrentCampaignFromLocation(tenant.slug);
     return campaignParamsFromSearchParams(new URLSearchParams(window.location.search));
   });
-  const [trackedWhatsappUrl, setTrackedWhatsappUrl] = useState(() =>
-    buildTrackedWhatsappUrl(whatsappUrl, campaign)
-  );
+  const trackedWhatsappUrl = buildTrackedWhatsappUrl(whatsappUrl, campaign);
   const isLight = themeMode === 'light';
   const isSoft = themeMode === 'soft';
   const isDark = themeMode === 'dark';
@@ -280,15 +283,8 @@ export function PropertyLandingClient({
   }, [tenant.google_place_id, tenant.slug]);
 
   useEffect(() => {
-    if (!tenant.slug) return;
-    const captured = captureCampaignFromLocation(tenant.slug);
-    setCampaign(captured);
-    setTrackedWhatsappUrl(buildTrackedWhatsappUrl(whatsappUrl, captured));
-  }, [tenant.slug, whatsappUrl]);
-
-  useEffect(() => {
     if (!tenant.id || !property.id) return;
-    const eventKey = `sp-property-view:${tenant.id}:${property.id}`;
+    const eventKey = `sp-property-view:${tenant.id}:${property.id}:${campaignIdentityKey(campaign)}`;
     if (typeof window !== 'undefined' && window.sessionStorage.getItem(eventKey) === '1') {
       return;
     }
@@ -380,6 +376,10 @@ export function PropertyLandingClient({
   );
   const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
   const vcardQrDataUrl = tenant.contact_ref_applied ? '' : String(tenant.vcard_qr_data_url || '').trim();
+  const generatedVcardQrDataUrl =
+    generatedVcardQr?.vcardUrl === vcardUrl ? generatedVcardQr.dataUrl : '';
+  const vcardQrGenerationFailed =
+    generatedVcardQr?.vcardUrl === vcardUrl ? generatedVcardQr.failed : false;
   const effectiveVcardQrDataUrl = generatedVcardQrDataUrl || vcardQrDataUrl;
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
@@ -461,13 +461,10 @@ export function PropertyLandingClient({
 
   useEffect(() => {
     if (!vcardUrl) {
-      setGeneratedVcardQrDataUrl('');
-      setIsGeneratingVcardQr(false);
       return;
     }
 
     let cancelled = false;
-    setIsGeneratingVcardQr(true);
     QRCode.toDataURL(vcardUrl, {
       errorCorrectionLevel: 'M',
       margin: 1,
@@ -478,13 +475,10 @@ export function PropertyLandingClient({
       },
     })
       .then((url) => {
-        if (!cancelled) setGeneratedVcardQrDataUrl(url);
+        if (!cancelled) setGeneratedVcardQr({ vcardUrl, dataUrl: url, failed: false });
       })
       .catch(() => {
-        if (!cancelled) setGeneratedVcardQrDataUrl('');
-      })
-      .finally(() => {
-        if (!cancelled) setIsGeneratingVcardQr(false);
+        if (!cancelled) setGeneratedVcardQr({ vcardUrl, dataUrl: '', failed: true });
       });
 
     return () => {
@@ -1224,7 +1218,7 @@ export function PropertyLandingClient({
                       />
                     ) : (
                       <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
-                        {isGeneratingVcardQr ? 'Generando QR...' : 'Agenda Mis Datos'}
+                        {vcardQrGenerationFailed ? 'Agenda Mis Datos' : 'Generando QR...'}
                       </div>
                     )}
                     <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
