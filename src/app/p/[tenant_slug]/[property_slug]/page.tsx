@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { PropertyLandingClient } from "@/components/PropertyLandingClient";
 import TenantGtm from "@/components/TenantGtm";
+import {
+  appendCampaignParamsToMessage,
+  campaignParamsFromSearchParams,
+} from "@/lib/campaign-tracking";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -98,6 +102,11 @@ function buildWhatsappMessage(property: PublicProperty) {
   return `Hola! Me interesa la propiedad ${property.name}.`;
 }
 
+function firstSearchValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] || "";
+  return value || "";
+}
+
 async function fetchPublicProperty(
   tenantSlug: string,
   propertySlug: string,
@@ -179,10 +188,11 @@ export default async function PropertyLandingPage({
   searchParams,
 }: {
   params: Promise<{ tenant_slug: string; property_slug: string }>;
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { tenant_slug, property_slug } = await params;
-  const { ref: refParam } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const refParam = firstSearchValue(resolvedSearchParams.ref);
   const referralCode = String(refParam || '')
     .trim()
     .toLowerCase()
@@ -200,8 +210,18 @@ export default async function PropertyLandingPage({
   const whatsappText = referralCode
     ? `${baseWhatsappText} ref=${referralCode} source=referral`
     : baseWhatsappText;
+  const campaignSearchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    const firstValue = firstSearchValue(value).trim();
+    if (firstValue) campaignSearchParams.set(key, firstValue);
+  }
+  if (referralCode) campaignSearchParams.set("ref", referralCode);
+  const trackedWhatsappText = appendCampaignParamsToMessage(
+    whatsappText,
+    campaignParamsFromSearchParams(campaignSearchParams)
+  );
   const whatsappUrl = whatsappPhone
-    ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappText)}`
+    ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(trackedWhatsappText)}`
     : "";
 
   return (
