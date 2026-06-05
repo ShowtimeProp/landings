@@ -206,16 +206,14 @@ export default async function PropertyLandingPage({
 
   const { tenant, property } = data;
   const whatsappPhone = tenant.whatsapp ? sanitizePhoneToWa(tenant.whatsapp) : "";
-  const baseWhatsappText = buildWhatsappMessage(property);
-  const whatsappText = referralCode
-    ? `${baseWhatsappText} ref=${referralCode} source=referral`
-    : baseWhatsappText;
+  const whatsappText = buildWhatsappMessage(property);
   const campaignSearchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(resolvedSearchParams)) {
     const firstValue = firstSearchValue(value).trim();
     if (firstValue) campaignSearchParams.set(key, firstValue);
   }
   if (referralCode) campaignSearchParams.set("ref", referralCode);
+  if (referralCode) campaignSearchParams.set("source", "referral");
   const trackedWhatsappText = appendCampaignParamsToMessage(
     whatsappText,
     campaignParamsFromSearchParams(campaignSearchParams)

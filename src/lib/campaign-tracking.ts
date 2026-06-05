@@ -1,5 +1,6 @@
 export type CampaignParams = {
   ref?: string;
+  source?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -15,6 +16,7 @@ export type CampaignParams = {
 
 const CAMPAIGN_KEYS: (keyof CampaignParams)[] = [
   "ref",
+  "source",
   "utm_source",
   "utm_medium",
   "utm_campaign",
@@ -30,6 +32,7 @@ const CAMPAIGN_KEYS: (keyof CampaignParams)[] = [
 
 const KEY_LIMITS: Record<keyof CampaignParams, number> = {
   ref: 64,
+  source: 80,
   utm_source: 120,
   utm_medium: 120,
   utm_campaign: 160,
@@ -209,15 +212,17 @@ export function appendCampaignParamsToMessage(
   params: CampaignParams
 ): string {
   const normalized = normalizeCampaignParams(params);
-  let output = String(message || "").trim();
+  const output = String(message || "").trim();
+  const trackingParts: string[] = [];
   for (const key of CAMPAIGN_KEYS) {
     const value = normalized[key];
     if (!value) continue;
     const token = `${key}=`;
     if (output.includes(token)) continue;
-    output = `${output}${output ? " " : ""}${key}=${value}`;
+    trackingParts.push(`${key}=${value}`);
   }
-  return output;
+  if (!trackingParts.length) return output;
+  return `${output}${output ? "\n\n" : ""}${trackingParts.join(" ")}`;
 }
 
 export function buildTrackedWhatsappUrl(
