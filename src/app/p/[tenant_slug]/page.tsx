@@ -211,6 +211,7 @@ const CAMPAIGN_QUERY_KEYS = [
   'utm_term',
   'property_id',
   'marketing_campaign_id',
+  'variant_id',
   'fbclid',
   'gclid',
   'gbraid',

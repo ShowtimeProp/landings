@@ -8,6 +8,7 @@ export type CampaignParams = {
   utm_term?: string;
   property_id?: string;
   marketing_campaign_id?: string;
+  variant_id?: string;
   fbclid?: string;
   gclid?: string;
   gbraid?: string;
@@ -24,6 +25,7 @@ const CAMPAIGN_KEYS: (keyof CampaignParams)[] = [
   "utm_term",
   "property_id",
   "marketing_campaign_id",
+  "variant_id",
   "fbclid",
   "gclid",
   "gbraid",
@@ -40,6 +42,7 @@ const KEY_LIMITS: Record<keyof CampaignParams, number> = {
   utm_term: 120,
   property_id: 80,
   marketing_campaign_id: 80,
+  variant_id: 80,
   fbclid: 200,
   gclid: 200,
   gbraid: 200,
@@ -163,6 +166,7 @@ export function captureCurrentCampaignFromLocation(tenantSlug: string): Campaign
 export function campaignIdentityKey(params: CampaignParams): string {
   const normalized = normalizeCampaignParams(params);
   return (
+    normalized.variant_id ||
     normalized.marketing_campaign_id ||
     normalized.utm_campaign ||
     normalized.ref ||

@@ -554,6 +554,7 @@ export function PropertyLandingClient({
         utm_campaign: campaign.utm_campaign,
         utm_content: campaign.utm_content,
         utm_term: campaign.utm_term,
+        variant_id: campaign.variant_id,
         fbclid: campaign.fbclid,
         gclid: campaign.gclid,
         gbraid: campaign.gbraid,

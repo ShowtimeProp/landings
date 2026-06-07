@@ -64,6 +64,8 @@ const CAMPAIGN_KEYS = [
   'utm_campaign',
   'utm_content',
   'utm_term',
+  'marketing_campaign_id',
+  'variant_id',
   'fbclid',
   'gclid',
   'gbraid',
