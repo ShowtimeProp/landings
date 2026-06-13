@@ -215,9 +215,18 @@ export default function MLSMapClient({
 
       map.on('moveend', scheduleFetch);
       fetchPoints();
+      map.resize();
     });
 
+    const onResize = () => map.resize();
+    window.addEventListener('resize', onResize);
+    const resizeTimers = [0, 150, 400].map((ms) =>
+      window.setTimeout(() => map.resize(), ms)
+    );
+
     return () => {
+      window.removeEventListener('resize', onResize);
+      resizeTimers.forEach((id) => window.clearTimeout(id));
       map.remove();
       mapRef.current = null;
     };
@@ -276,12 +285,12 @@ export default function MLSMapClient({
   }, [total]);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-zinc-950">
-      <div ref={containerRef} className="absolute inset-0" />
+    <main className="mls-map-root fixed inset-0 z-0 h-[100dvh] w-full overflow-hidden bg-zinc-950">
+      <div ref={containerRef} className="h-full w-full min-h-[100dvh]" />
 
       {/* Panel superior */}
-      <div className="absolute left-0 right-0 top-0 z-10 flex flex-col gap-2 p-3 md:left-4 md:right-auto md:top-4 md:w-[400px] md:p-0">
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/90 p-3 shadow-xl backdrop-blur">
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex flex-col gap-2 p-3 md:left-4 md:right-auto md:top-4 md:w-[400px] md:p-0">
+        <div className="pointer-events-auto rounded-2xl border border-white/10 bg-zinc-900/90 p-3 shadow-xl backdrop-blur">
           <h1 className="mb-0.5 text-base font-bold text-white">
             Propiedades en Mar del Plata
           </h1>
@@ -336,7 +345,7 @@ export default function MLSMapClient({
 
         {/* Resultados de búsqueda semántica */}
         {results && (
-          <div className="max-h-[50vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900/90 shadow-xl backdrop-blur">
+          <div className="pointer-events-auto max-h-[50vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900/90 shadow-xl backdrop-blur">
             {results.length === 0 ? (
               <p className="p-4 text-sm text-zinc-400">Sin resultados para esa búsqueda.</p>
             ) : (
