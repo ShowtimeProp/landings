@@ -21,6 +21,13 @@ type MapPoint = {
 };
 
 type SearchResult = MapPoint & { score?: number | null; description?: string | null };
+type MapTheme = 'dark' | 'light' | 'soft';
+
+const MAP_THEMES: { value: MapTheme; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'soft', label: 'Soft' },
+];
 
 const OPERATIONS = [
   { value: '', label: 'Operación' },
@@ -38,6 +45,18 @@ const TYPES = [
   { value: 'local', label: 'Local' },
   { value: 'cochera', label: 'Cochera' },
 ];
+
+function mapStyleForTheme(theme: MapTheme): string {
+  if (theme === 'light') return 'mapbox://styles/mapbox/light-v11';
+  if (theme === 'soft') return 'mapbox://styles/mapbox/streets-v12';
+  return 'mapbox://styles/mapbox/dark-v11';
+}
+
+function readStoredTheme(): MapTheme {
+  if (typeof window === 'undefined') return 'dark';
+  const stored = window.localStorage.getItem('mls-map-theme');
+  return stored === 'light' || stored === 'soft' || stored === 'dark' ? stored : 'dark';
+}
 
 function formatPrice(price: number | null, currency: string | null): string {
   if (!price) return 'Consultar';
@@ -60,6 +79,7 @@ export default function MLSMapClient({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const fetchTimer = useRef<number | null>(null);
+  const didApplyInitialTheme = useRef(false);
 
   const [operation, setOperation] = useState('');
   const [propertyType, setPropertyType] = useState('');
@@ -67,6 +87,7 @@ export default function MLSMapClient({
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [theme, setTheme] = useState<MapTheme>(() => readStoredTheme());
 
   const filtersRef = useRef({ operation: '', propertyType: '' });
   filtersRef.current = { operation, propertyType };
@@ -111,21 +132,8 @@ export default function MLSMapClient({
     fetchTimer.current = window.setTimeout(fetchPoints, 350);
   }, [fetchPoints]);
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    mapboxgl.accessToken = mapboxToken;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [center.lng, center.lat],
-      zoom,
-      attributionControl: true,
-    });
-    mapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: false }), 'top-right');
-
-    map.on('load', () => {
+  const setupListingLayers = useCallback((map: mapboxgl.Map) => {
+    if (!map.getSource('listings')) {
       map.addSource('listings', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -133,7 +141,9 @@ export default function MLSMapClient({
         clusterMaxZoom: 15,
         clusterRadius: 46,
       });
+    }
 
+    if (!map.getLayer('clusters')) {
       map.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -145,6 +155,9 @@ export default function MLSMapClient({
           'circle-opacity': 0.85,
         },
       });
+    }
+
+    if (!map.getLayer('cluster-count')) {
       map.addLayer({
         id: 'cluster-count',
         type: 'symbol',
@@ -157,6 +170,9 @@ export default function MLSMapClient({
         },
         paint: { 'text-color': '#0f172a' },
       });
+    }
+
+    if (!map.getLayer('unclustered')) {
       map.addLayer({
         id: 'unclustered',
         type: 'circle',
@@ -169,6 +185,25 @@ export default function MLSMapClient({
           'circle-stroke-color': '#0f172a',
         },
       });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    mapboxgl.accessToken = mapboxToken;
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: mapStyleForTheme(theme),
+      center: [center.lng, center.lat],
+      zoom,
+      attributionControl: true,
+    });
+    mapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: false }), 'top-right');
+
+    map.on('load', () => {
+      setupListingLayers(map);
 
       map.on('click', 'clusters', (e) => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
@@ -234,6 +269,22 @@ export default function MLSMapClient({
   }, []);
 
   useEffect(() => {
+    const map = mapRef.current;
+    window.localStorage.setItem('mls-map-theme', theme);
+    if (!map) return;
+    if (!didApplyInitialTheme.current) {
+      didApplyInitialTheme.current = true;
+      return;
+    }
+
+    map.setStyle(mapStyleForTheme(theme));
+    map.once('style.load', () => {
+      setupListingLayers(map);
+      fetchPoints();
+    });
+  }, [fetchPoints, setupListingLayers, theme]);
+
+  useEffect(() => {
     scheduleFetch();
   }, [operation, propertyType, scheduleFetch]);
 
@@ -284,17 +335,78 @@ export default function MLSMapClient({
     return `${total.toLocaleString('es-AR')} propiedades en esta zona`;
   }, [total]);
 
+  const isLight = theme === 'light';
+  const isSoft = theme === 'soft';
+  const rootClass = isLight ? 'bg-zinc-100' : isSoft ? 'bg-[#f4f0e8]' : 'bg-zinc-950';
+  const panelClass = isLight
+    ? 'border-zinc-200 bg-white/92 shadow-xl'
+    : isSoft
+      ? 'border-stone-200/80 bg-[#fbf7ef]/92 shadow-xl'
+      : 'border-white/10 bg-zinc-900/90 shadow-xl';
+  const titleClass = isLight || isSoft ? 'text-zinc-950' : 'text-white';
+  const subtleClass = isLight ? 'text-zinc-500' : isSoft ? 'text-stone-500' : 'text-zinc-400';
+  const fieldClass = isLight
+    ? 'border-zinc-200 bg-zinc-50 text-zinc-950 placeholder-zinc-400 focus:border-cyan-500'
+    : isSoft
+      ? 'border-stone-200 bg-white/75 text-stone-950 placeholder-stone-400 focus:border-cyan-500'
+      : 'border-white/10 bg-zinc-800 text-white placeholder-zinc-500 focus:border-cyan-500';
+  const selectClass = isLight
+    ? 'border-zinc-200 bg-zinc-50 text-zinc-900'
+    : isSoft
+      ? 'border-stone-200 bg-white/75 text-stone-900'
+      : 'border-white/10 bg-zinc-800 text-white';
+  const themeShellClass = isLight
+    ? 'border-zinc-200 bg-zinc-100'
+    : isSoft
+      ? 'border-stone-200 bg-stone-100/80'
+      : 'border-white/15 bg-white/5';
+  const inactiveThemeClass = isLight
+    ? 'text-zinc-600 hover:text-zinc-950'
+    : isSoft
+      ? 'text-stone-600 hover:text-stone-950'
+      : 'text-zinc-300 hover:text-zinc-100';
+  const activeThemeClass = 'bg-white text-zinc-900 shadow-sm';
+  const resultsClass = isLight
+    ? 'border-zinc-200 bg-white/94 shadow-xl'
+    : isSoft
+      ? 'border-stone-200/80 bg-[#fbf7ef]/94 shadow-xl'
+      : 'border-white/10 bg-zinc-900/90 shadow-xl';
+  const resultHoverClass = isLight || isSoft ? 'hover:bg-zinc-950/[0.04]' : 'hover:bg-white/5';
+  const resultBorderClass = isLight ? 'border-zinc-100' : isSoft ? 'border-stone-200/70' : 'border-white/5';
+  const resultTitleClass = isLight || isSoft ? 'text-zinc-950' : 'text-white';
+  const resultBodyClass = isLight ? 'text-zinc-600' : isSoft ? 'text-stone-600' : 'text-zinc-300';
+  const resultMutedClass = isLight ? 'text-zinc-500' : isSoft ? 'text-stone-500' : 'text-zinc-500';
+
   return (
-    <main className="mls-map-root fixed inset-0 z-0 h-[100dvh] w-full overflow-hidden bg-zinc-950">
+    <main className={`mls-map-root fixed inset-0 z-0 h-[100dvh] w-full overflow-hidden ${rootClass}`}>
       <div ref={containerRef} className="h-full w-full min-h-[100dvh]" />
 
       {/* Panel superior */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex flex-col gap-2 p-3 md:left-4 md:right-auto md:top-4 md:w-[400px] md:p-0">
-        <div className="pointer-events-auto rounded-2xl border border-white/10 bg-zinc-900/90 p-3 shadow-xl backdrop-blur">
-          <h1 className="mb-0.5 text-base font-bold text-white">
-            Propiedades en Mar del Plata
-          </h1>
-          <p className="mb-2 text-xs text-zinc-400">{headline}</p>
+        <div className={`pointer-events-auto rounded-2xl border p-3 backdrop-blur ${panelClass}`}>
+          <div className="mb-2 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className={`mb-0.5 text-base font-bold ${titleClass}`}>
+                Propiedades en Mar del Plata
+              </h1>
+              <p className={`text-xs ${subtleClass}`}>{headline}</p>
+            </div>
+            <nav
+              aria-label="Estilo del mapa"
+              className={`flex shrink-0 items-center gap-0.5 rounded-full border p-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${themeShellClass}`}
+            >
+              {MAP_THEMES.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setTheme(item.value)}
+                  className={`rounded-full px-2 py-1 transition ${theme === item.value ? activeThemeClass : inactiveThemeClass}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
           <div className="flex gap-2">
             <input
@@ -302,7 +414,7 @@ export default function MLSMapClient({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && runSemanticSearch()}
               placeholder='Buscá como hablás: "2 ambientes cerca del mar en Güemes"'
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:border-cyan-500"
+              className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none ${fieldClass}`}
             />
             <button
               onClick={runSemanticSearch}
@@ -317,7 +429,7 @@ export default function MLSMapClient({
             <select
               value={operation}
               onChange={(e) => setOperation(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-zinc-800 px-2 py-1.5 text-xs text-white outline-none"
+              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs outline-none ${selectClass}`}
             >
               {OPERATIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -326,7 +438,7 @@ export default function MLSMapClient({
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-zinc-800 px-2 py-1.5 text-xs text-white outline-none"
+              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs outline-none ${selectClass}`}
             >
               {TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -335,7 +447,7 @@ export default function MLSMapClient({
             {results && (
               <button
                 onClick={() => { setResults(null); setQuery(''); }}
-                className="rounded-lg border border-white/10 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-300 hover:text-white"
+                className={`rounded-lg border px-2 py-1.5 text-xs ${selectClass}`}
               >
                 Limpiar
               </button>
@@ -345,15 +457,15 @@ export default function MLSMapClient({
 
         {/* Resultados de búsqueda semántica */}
         {results && (
-          <div className="pointer-events-auto max-h-[50vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900/90 shadow-xl backdrop-blur">
+          <div className={`pointer-events-auto max-h-[50vh] overflow-y-auto rounded-2xl border backdrop-blur ${resultsClass}`}>
             {results.length === 0 ? (
-              <p className="p-4 text-sm text-zinc-400">Sin resultados para esa búsqueda.</p>
+              <p className={`p-4 text-sm ${subtleClass}`}>Sin resultados para esa búsqueda.</p>
             ) : (
               results.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => flyTo(r)}
-                  className="flex w-full gap-3 border-b border-white/5 p-3 text-left transition hover:bg-white/5"
+                  className={`flex w-full gap-3 border-b p-3 text-left transition ${resultBorderClass} ${resultHoverClass}`}
                 >
                   {r.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -363,14 +475,14 @@ export default function MLSMapClient({
                       className="h-14 w-20 flex-none rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="h-14 w-20 flex-none rounded-lg bg-zinc-800" />
+                    <div className={`h-14 w-20 flex-none rounded-lg ${isLight || isSoft ? 'bg-zinc-200' : 'bg-zinc-800'}`} />
                   )}
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white">
+                    <div className={`text-sm font-semibold ${resultTitleClass}`}>
                       {formatPrice(r.price, r.price_currency)}
                     </div>
-                    <div className="truncate text-xs text-zinc-300">{r.title}</div>
-                    <div className="text-xs text-zinc-500">{r.zona}</div>
+                    <div className={`truncate text-xs ${resultBodyClass}`}>{r.title}</div>
+                    <div className={`text-xs ${resultMutedClass}`}>{r.zona}</div>
                     <a
                       href={`/mapa/listing/${r.id}`}
                       onClick={(e) => e.stopPropagation()}
