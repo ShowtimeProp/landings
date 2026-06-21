@@ -17,7 +17,6 @@ type MapConfig = {
   zoom: number;
   styleUrl?: string | null;
   defaultLocalitySlug?: string;
-  enable3d?: boolean;
 };
 
 async function fetchConfig(): Promise<MapConfig | null> {
@@ -49,7 +48,6 @@ export default async function MapaPage() {
       zoom={config.zoom}
       styleUrl={config.styleUrl}
       defaultLocalitySlug={config.defaultLocalitySlug}
-      enable3d={config.enable3d}
     />
   );
 }

@@ -196,7 +196,6 @@ export default function MLSMapClient({
   zoom,
   styleUrl,
   defaultLocalitySlug = 'mar-del-plata',
-  enable3d = true,
 }: {
   backendUrl: string;
   mapboxToken: string;
@@ -204,7 +203,6 @@ export default function MLSMapClient({
   zoom: number;
   styleUrl?: string | null;
   defaultLocalitySlug?: string;
-  enable3d?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -231,7 +229,6 @@ export default function MLSMapClient({
   const [assistantAnswer, setAssistantAnswer] = useState<string | null>(null);
   const [assistantCaveats, setAssistantCaveats] = useState<string[]>([]);
   const [theme, setTheme] = useState<MapTheme>(() => readStoredTheme());
-  const [is3d, setIs3d] = useState(false);
   const [hoverPoint, setHoverPoint] = useState<MapPoint | null>(null);
   const [hoverScreenPoint, setHoverScreenPoint] = useState<{ x: number; y: number } | null>(null);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(() => readUrlParam('listing') || null);
@@ -389,60 +386,6 @@ export default function MLSMapClient({
     }
   }, []);
 
-  const apply3dMode = useCallback((map: mapboxgl.Map, enabled: boolean) => {
-    const existing = map.getLayer('3d-buildings');
-    if (!enabled) {
-      if (existing) map.removeLayer('3d-buildings');
-      map.easeTo({ pitch: 0, bearing: 0, duration: 650 });
-      return;
-    }
-
-    const targetZoom = Math.max(map.getZoom(), 15.4);
-    if (!map.getSource('composite')) {
-      map.easeTo({ pitch: 58, bearing: -18, zoom: targetZoom, duration: 650 });
-      return;
-    }
-    if (!existing) {
-      const layers = map.getStyle()?.layers || [];
-      const labelLayerId = layers.find(
-        (layer) => layer.type === 'symbol' && layer.layout && layer.layout['text-field']
-      )?.id;
-      map.addLayer(
-        {
-          id: '3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          type: 'fill-extrusion',
-          minzoom: 14,
-          paint: {
-            'fill-extrusion-color': '#b9c3cf',
-            'fill-extrusion-height': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              14,
-              0,
-              15.4,
-              ['max', ['to-number', ['get', 'height'], 14], 10],
-            ],
-            'fill-extrusion-base': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              14,
-              0,
-              15.4,
-              ['to-number', ['get', 'min_height'], 0],
-            ],
-            'fill-extrusion-opacity': 0.5,
-          },
-        },
-        labelLayerId
-      );
-    }
-    map.easeTo({ pitch: 58, bearing: -18, zoom: targetZoom, duration: 650 });
-  }, []);
-
   const fetchPoints = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -573,7 +516,6 @@ export default function MLSMapClient({
 
     map.on('load', () => {
       setupListingLayers(map);
-      apply3dMode(map, is3d);
 
       map.on('click', 'clusters', (e) => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
@@ -658,16 +600,9 @@ export default function MLSMapClient({
     map.setStyle(mapStyleForTheme(theme, styleUrl));
     map.once('style.load', () => {
       setupListingLayers(map);
-      apply3dMode(map, is3d);
       fetchPoints();
     });
-  }, [apply3dMode, fetchPoints, is3d, setupListingLayers, styleUrl, theme]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    apply3dMode(map, is3d);
-  }, [apply3dMode, is3d]);
+  }, [fetchPoints, setupListingLayers, styleUrl, theme]);
 
   useEffect(() => {
     if (selectedLocality) {
@@ -844,7 +779,7 @@ export default function MLSMapClient({
             </button>
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
             <select
               value={localitySlug}
               onChange={(e) => setLocalitySlug(e.target.value)}
@@ -875,14 +810,6 @@ export default function MLSMapClient({
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
-            <button
-              type="button"
-              disabled={!enable3d}
-              onClick={() => setIs3d((value) => !value)}
-              className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${selectClass} ${is3d ? 'ring-2 ring-cyan-400/50' : ''}`}
-            >
-              {is3d ? '3D activo' : '2D / 3D'}
-            </button>
           </div>
 
           {results && (
