@@ -47,6 +47,7 @@ type PropertyLike = {
 
 function defaultMapStyle(theme: PortfolioTheme): string {
   if (theme === 'light') return 'mapbox://styles/mapbox/light-v11';
+  if (theme === 'soft') return 'mapbox://styles/mapbox/streets-v12';
   return 'mapbox://styles/mapbox/dark-v11';
 }
 

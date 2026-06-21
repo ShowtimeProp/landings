@@ -40,6 +40,7 @@ type PortfolioResponse = {
     logo_url?: string | null;
     profile_photo_url?: string | null;
     social_links?: Record<string, string> | null;
+    portfolio_bio?: string | null;
     vcard_slug?: string | null;
     vcard_url?: string | null;
     vcard_qr_data_url?: string | null;
@@ -144,6 +145,7 @@ export default async function OwnerCapturePage({
       tenantSlug={tenant.slug}
       tenantName={tenant.name}
       contactName={tenant.realtor_name || tenant.name}
+      portfolioBio={tenant.portfolio_bio || null}
       whatsapp={tenant.whatsapp || null}
       logoUrl={tenant.logo_url || tenant.profile_photo_url || null}
       profilePhotoUrl={tenant.profile_photo_url || null}

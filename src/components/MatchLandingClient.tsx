@@ -23,6 +23,8 @@ type TenantPayload = {
 
 type MatchProperty = {
   id: string;
+  source?: string | null;
+  external_listing_id?: string | null;
   name: string;
   property_type?: string | null;
   operation_type?: string | null;
@@ -36,6 +38,8 @@ type MatchProperty = {
   price_on_request?: boolean | null;
   currency?: string | null;
   tour_virtual_url?: string | null;
+  public_url?: string | null;
+  source_label?: string | null;
   images?: unknown[];
   latitude?: number | null;
   longitude?: number | null;
@@ -55,7 +59,13 @@ export type MatchLandingPayload = {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 
-export default function MatchLandingClient({ payload }: { payload: MatchLandingPayload }) {
+export default function MatchLandingClient({
+  payload,
+  refCode = '',
+}: {
+  payload: MatchLandingPayload;
+  refCode?: string;
+}) {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(
     new Set((payload.favorite_property_ids || []).map((item) => String(item)))
   );
@@ -86,7 +96,7 @@ export default function MatchLandingClient({ payload }: { payload: MatchLandingP
     return ordered as MatchProperty[];
   }, [favoriteIds, propertyById]);
 
-  const whatsappUrl = getWhatsappUrl(payload.tenant.whatsapp, contactName, payload.landing_token);
+  const whatsappUrl = getWhatsappUrl(payload.tenant.whatsapp, contactName, payload.landing_token, refCode);
   const criteria = payload.profile || {};
   const criteriaChips = buildCriteriaChips(criteria);
 
@@ -208,6 +218,7 @@ export default function MatchLandingClient({ payload }: { payload: MatchLandingP
                   item={item}
                   saved={favoriteIds.has(String(item.id))}
                   saving={savingPropertyId === String(item.id)}
+                  refCode={refCode}
                   onToggleFavorite={() => toggleFavorite(String(item.id))}
                 />
               ))}
@@ -229,6 +240,7 @@ export default function MatchLandingClient({ payload }: { payload: MatchLandingP
                 item={item}
                 saved={favoriteIds.has(String(item.id))}
                 saving={savingPropertyId === String(item.id)}
+                refCode={refCode}
                 onToggleFavorite={() => toggleFavorite(String(item.id))}
               />
             ))}
@@ -258,15 +270,21 @@ function PropertyCard({
   item,
   saved,
   saving,
+  refCode,
   onToggleFavorite,
 }: {
   item: MatchProperty;
   saved: boolean;
   saving: boolean;
+  refCode?: string;
   onToggleFavorite: () => void;
 }) {
   const imageUrl = getImageUrl(item.images?.[0]) || '';
   const priceLabel = formatPrice(item);
+  const source = String(item.source || 'crm').trim().toLowerCase();
+  const isMls = source === 'mls';
+  const sourceLabel = item.source_label || (isMls ? 'MLS' : null);
+  const actionUrl = appendRefToUrl(String(item.public_url || item.tour_virtual_url || ''), refCode);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/70 shadow-[0_12px_35px_rgba(0,0,0,0.28)]">
@@ -281,13 +299,15 @@ function PropertyCard({
           type="button"
           onClick={onToggleFavorite}
           disabled={saving}
-          className={`absolute right-3 top-3 rounded-full border px-3 py-1 text-xs font-semibold ${
+          aria-label={saved ? 'Quitar de favoritos' : 'Guardar como favorito'}
+          title={saved ? 'Quitar de favoritos' : 'Guardar como favorito'}
+          className={`absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold shadow-lg backdrop-blur transition ${
             saved
-              ? 'border-rose-300/45 bg-rose-500/30 text-rose-100'
-              : 'border-white/20 bg-black/45 text-zinc-100'
+              ? 'border-rose-300/55 bg-rose-500/35 text-rose-100'
+              : 'border-white/25 bg-black/50 text-zinc-100 hover:border-rose-200/50 hover:text-rose-100'
           }`}
         >
-          {saving ? 'Guardando...' : saved ? 'Guardada' : 'Guardar'}
+          <span aria-hidden="true">{saving ? '...' : saved ? '♥' : '♡'}</span>
         </button>
         {item.rank != null && (
           <span className="absolute left-3 top-3 rounded-full border border-cyan-300/45 bg-cyan-400/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
@@ -297,17 +317,24 @@ function PropertyCard({
       </div>
 
       <div className="space-y-3 p-4">
-        <h3 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-100">{item.name}</h3>
+        <div>
+          <h3 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-100">{item.name}</h3>
+          {sourceLabel && (
+            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-cyan-200/80">
+              {isMls ? `MLS · ${sourceLabel}` : sourceLabel}
+            </p>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {item.property_type && (
             <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-200">
-              {item.property_type}
+              {formatPropertyType(item.property_type)}
             </span>
           )}
           {item.operation_type && (
             <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-200">
-              {item.operation_type}
+              {formatOperationType(item.operation_type)}
             </span>
           )}
           {item.bedrooms != null && (
@@ -324,17 +351,17 @@ function PropertyCard({
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-base font-semibold text-zinc-100">{priceLabel}</p>
-          {item.tour_virtual_url ? (
+          {actionUrl ? (
             <a
-              href={item.tour_virtual_url}
+              href={actionUrl}
               target="_blank"
               rel="noreferrer"
               className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200 hover:text-cyan-100"
             >
-              Ver tour
+              {item.public_url ? 'Ver propiedad' : 'Ver tour'}
             </a>
           ) : (
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Sin tour</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Sin link</span>
           )}
         </div>
       </div>
@@ -350,6 +377,56 @@ function getImageUrl(img: unknown): string {
     return typeof value === 'string' ? value : '';
   }
   return '';
+}
+
+function appendRefToUrl(rawUrl: string, refCode?: string): string {
+  const cleanUrl = rawUrl.trim();
+  const cleanRef = String(refCode || '').trim();
+  if (!cleanUrl || !cleanRef) return cleanUrl;
+  try {
+    const url = new URL(cleanUrl, typeof window !== 'undefined' ? window.location.origin : undefined);
+    if (!url.searchParams.get('ref')) url.searchParams.set('ref', cleanRef);
+    return url.toString();
+  } catch {
+    const separator = cleanUrl.includes('?') ? '&' : '?';
+    return `${cleanUrl}${separator}ref=${encodeURIComponent(cleanRef)}`;
+  }
+}
+
+function formatOperationType(value?: string | null): string {
+  const map: Record<string, string> = {
+    sale: 'Venta',
+    rent: 'Alquiler',
+    rent_long_term: 'Alquiler tradicional',
+    rent_short_term: 'Alquiler temporario',
+    both: 'Venta o alquiler',
+    venta: 'Venta',
+    alquiler: 'Alquiler',
+    alquiler_temporario: 'Alquiler temporario',
+  };
+  const key = String(value || '').trim();
+  return key ? map[key] || key : '';
+}
+
+function formatPropertyType(value?: string | null): string {
+  const map: Record<string, string> = {
+    apartment: 'Departamento',
+    departamento: 'Departamento',
+    house: 'Casa',
+    casa: 'Casa',
+    ph: 'PH',
+    land: 'Terreno',
+    terreno: 'Terreno',
+    local: 'Local',
+    commercial: 'Comercial',
+    office: 'Oficina',
+    garage: 'Cochera',
+    cochera: 'Cochera',
+    project: 'Proyecto',
+    other: 'Otro',
+  };
+  const key = String(value || '').trim();
+  return key ? map[key] || key : '';
 }
 
 function formatPrice(item: MatchProperty): string {
@@ -371,11 +448,16 @@ function formatPrice(item: MatchProperty): string {
   return 'Precio a consultar';
 }
 
-function getWhatsappUrl(phone?: string | null, contactName?: string, landingToken?: string): string | null {
+function getWhatsappUrl(
+  phone?: string | null,
+  contactName?: string,
+  landingToken?: string,
+  refCode?: string
+): string | null {
   const digits = String(phone || '').replace(/[^\d]/g, '');
   if (!digits) return null;
   const text = encodeURIComponent(
-    `Hola ${contactName || ''}, vi el match de propiedades (${landingToken || ''}) y me gustaría avanzar.`
+    `Hola ${contactName || ''}, vi el match de propiedades (${landingToken || ''}${refCode ? ` · ref ${refCode}` : ''}) y me gustaría avanzar.`
   );
   return `https://wa.me/${digits}?text=${text}`;
 }
@@ -384,7 +466,8 @@ function buildCriteriaChips(profile: Record<string, unknown>): string[] {
   const chips: string[] = [];
   const locations = Array.isArray(profile.locations) ? profile.locations : [];
   if (locations.length) chips.push(`Zonas: ${locations.slice(0, 2).join(', ')}`);
-  if (profile.property_type) chips.push(`Tipo: ${String(profile.property_type)}`);
+  if (profile.operation_type) chips.push(`Operación: ${formatOperationType(String(profile.operation_type))}`);
+  if (profile.property_type) chips.push(`Tipo: ${formatPropertyType(String(profile.property_type))}`);
   if (profile.price_min || profile.price_max) {
     const min = typeof profile.price_min === 'number' ? profile.price_min.toLocaleString('es-AR') : null;
     const max = typeof profile.price_max === 'number' ? profile.price_max.toLocaleString('es-AR') : null;

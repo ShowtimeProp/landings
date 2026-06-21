@@ -53,6 +53,7 @@ type Tenant = {
   social_links?: Record<string, string> | null;
   martillero_responsable?: string | null;
   martillero_registro?: string | null;
+  portfolio_bio?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
@@ -334,6 +335,9 @@ export default async function PortfolioPage({
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
     tenant.name;
+  const portfolioBio =
+    String(tenant.portfolio_bio || '').trim() ||
+    `Referente comercial de ${tenant.tenant_name || tenant.name}. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!`;
   const vcardUrlFromApi = String(tenant.vcard_url || '').trim().replace(
     /\/vcard\/([^/?#]+)\.vcf(?=$|[?#])/i,
     '/vcard/$1'
@@ -590,7 +594,7 @@ export default async function PortfolioPage({
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
               </div>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtleTextClass}`}>
-                Referente comercial de Sumar Construcciones MDQ S.A. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!
+                {portfolioBio}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>

@@ -444,7 +444,6 @@ export function PropertyLandingClient({
       : 'border-white/10 bg-zinc-900/70 shadow-[0_12px_35px_rgba(0,0,0,0.28)]';
   const mapTitleClass = isLight ? 'text-zinc-900' : 'text-zinc-100';
   const mapSubtleClass = isLight ? 'text-zinc-600' : 'text-zinc-300';
-  const mapLinkClass = isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-zinc-200';
   const mapFrameClass =
     themeMode === 'light'
       ? 'border-zinc-200 bg-zinc-50 shadow-[0_10px_26px_rgba(15,23,42,0.06)]'
@@ -1029,33 +1028,19 @@ export function PropertyLandingClient({
                 <div className="mb-4">
                   <h2 className={`text-xl font-semibold ${mapTitleClass}`}>Ubicación</h2>
                   <p className={`mt-1 text-sm ${mapSubtleClass}`}>
-                    Tomá esta dirección como punto de referencia geográfica.
+                    {fullAddress
+                      ? 'Tomá esta dirección como punto de referencia geográfica.'
+                      : 'Referencia geográfica de la propiedad.'}
                   </p>
                 </div>
-                <div
-                  className={`aspect-video overflow-hidden rounded-xl border transition duration-300 hover:-translate-y-0.5 ${mapFrameClass}`}
-                >
-                  <iframe
-                    title="Mapa"
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(fullAddress)}&z=17&output=embed`}
-                    className="h-full w-full border-0"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className={`text-sm ${mapSubtleClass}`}>
-                    La ubicación se muestra de forma aproximada para preservar la privacidad y orientar la visita.
-                  </p>
-                  <a
-                    href={`https://www.google.com/maps?q=${encodeURIComponent(fullAddress)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`inline-block text-sm underline ${mapLinkClass}`}
-                  >
-                    Ver en Google Maps
-                  </a>
-                </div>
+                {fullAddress ? (
+                  <p className={`rounded-xl border px-4 py-3 text-sm ${mapFrameClass}`}>{fullAddress}</p>
+                ) : null}
+                <p className={`mt-3 text-sm ${mapSubtleClass}`}>
+                  {hasMapboxMap
+                    ? 'El mapa se mostrará cuando la propiedad tenga coordenadas. Activá geocodificación automática en Integraciones o cargá latitud/longitud manualmente.'
+                    : 'La ubicación se muestra de forma aproximada para preservar la privacidad y orientar la visita.'}
+                </p>
               </div>
             )}
           </section>

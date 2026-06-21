@@ -142,6 +142,7 @@ export default function OwnerCaptureFunnelClient({
   tenantSlug,
   tenantName,
   contactName,
+  portfolioBio,
   whatsapp,
   logoUrl,
   profilePhotoUrl,
@@ -158,6 +159,7 @@ export default function OwnerCaptureFunnelClient({
   tenantSlug: string;
   tenantName: string;
   contactName: string;
+  portfolioBio?: string | null;
   whatsapp?: string | null;
   logoUrl?: string | null;
   profilePhotoUrl?: string | null;
@@ -190,6 +192,9 @@ export default function OwnerCaptureFunnelClient({
   const buttonTextColor = /^#[0-9a-fA-F]{6}$/.test(String(config?.button_text_color || ''))
     ? String(config?.button_text_color)
     : '#111827';
+  const portfolioHeroText =
+    String(portfolioBio || '').trim() ||
+    `Referente comercial de ${tenantName}. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!`;
 
   useEffect(() => {
     const normalized = themeParam || getStoredThemeMode();
@@ -443,7 +448,7 @@ export default function OwnerCaptureFunnelClient({
                 <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h2>
               </div>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtitleTextClass}`}>
-                Referente comercial de {tenantName}. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!
+                {portfolioHeroText}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
