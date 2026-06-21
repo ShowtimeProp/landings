@@ -27,6 +27,7 @@ type MapPoint = {
   expenses_amount?: number | null;
   expenses_currency?: string | null;
   expenses_period?: string | null;
+  feature_flags?: Record<string, boolean> | null;
 };
 
 type ListingDetail = MapPoint & {
@@ -113,12 +114,18 @@ function formatMoney(value: number | null | undefined, currency: string | null |
 function formatType(value: string | null | undefined): string {
   const map: Record<string, string> = {
     apartment: 'Departamento',
+    departamento: 'Departamento',
     house: 'Casa',
+    casa: 'Casa',
     ph: 'PH',
     land: 'Terreno',
+    terreno: 'Terreno',
+    lote: 'Terreno',
     local: 'Local',
     garage: 'Cochera',
+    cochera: 'Cochera',
     project: 'Proyecto',
+    proyecto: 'Proyecto',
   };
   return map[value || ''] || value || 'Propiedad';
 }
@@ -390,8 +397,9 @@ export default function MLSMapClient({
       return;
     }
 
+    const targetZoom = Math.max(map.getZoom(), 15.4);
     if (!map.getSource('composite')) {
-      map.easeTo({ pitch: 52, bearing: -18, duration: 650 });
+      map.easeTo({ pitch: 58, bearing: -18, zoom: targetZoom, duration: 650 });
       return;
     }
     if (!existing) {
@@ -404,20 +412,35 @@ export default function MLSMapClient({
           id: '3d-buildings',
           source: 'composite',
           'source-layer': 'building',
-          filter: ['==', ['get', 'extrude'], 'true'],
           type: 'fill-extrusion',
-          minzoom: 15,
+          minzoom: 14,
           paint: {
             'fill-extrusion-color': '#b9c3cf',
-            'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, ['get', 'height']],
-            'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, ['get', 'min_height']],
-            'fill-extrusion-opacity': 0.42,
+            'fill-extrusion-height': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              14,
+              0,
+              15.4,
+              ['max', ['to-number', ['get', 'height'], 14], 10],
+            ],
+            'fill-extrusion-base': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              14,
+              0,
+              15.4,
+              ['to-number', ['get', 'min_height'], 0],
+            ],
+            'fill-extrusion-opacity': 0.5,
           },
         },
         labelLayerId
       );
     }
-    map.easeTo({ pitch: 58, bearing: -18, duration: 650 });
+    map.easeTo({ pitch: 58, bearing: -18, zoom: targetZoom, duration: 650 });
   }, []);
 
   const fetchPoints = useCallback(async () => {
