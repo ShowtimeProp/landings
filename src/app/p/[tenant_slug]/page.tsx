@@ -489,7 +489,7 @@ export default async function PortfolioPage({
   );
 
   return (
-    <div className={`min-h-screen ${rootClass}`}>
+    <div className={`min-h-screen overflow-x-hidden ${rootClass}`}>
       <TenantGtm marketing={tenant.marketing} />
       <PortfolioTrackingBridge tenantId={tenant.id} tenantSlug={tenant.slug} />
       <PortfolioWidgetGuard />
@@ -577,7 +577,26 @@ export default async function PortfolioPage({
                 Dark
               </Link>
             </nav>
-            <span className={`hidden rounded-full border px-3 py-1 text-xs sm:inline-flex ${headerBadgeClass}`}>
+            <nav
+              className={`hidden items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:flex ${
+                isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
+              }`}
+              aria-label="Acceso del comprador"
+            >
+              <Link
+                href={portalLoginHref}
+                className={`rounded-full px-2.5 py-1 transition ${isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
+              >
+                Ingresar
+              </Link>
+              <Link
+                href={portalSignupHref}
+                className="rounded-full bg-white px-2.5 py-1 text-zinc-800 shadow-sm transition hover:bg-zinc-100"
+              >
+                Registrarme
+              </Link>
+            </nav>
+            <span className={`hidden rounded-full border px-3 py-1 text-xs md:inline-flex ${headerBadgeClass}`}>
               {properties.length} propiedades
             </span>
           </div>
@@ -585,7 +604,7 @@ export default async function PortfolioPage({
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 sm:pt-10">
-        <section className={`relative left-1/2 w-screen -translate-x-1/2 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
+        <section className={`relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
           <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl" />
           <div className="relative z-10 mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -621,20 +640,6 @@ export default async function PortfolioPage({
                     Portfolio premium activo
                   </span>
                 )}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href={portalLoginHref}
-                  className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition ${emailButtonClass}`}
-                >
-                  Ingresar
-                </Link>
-                <Link
-                  href={portalSignupHref}
-                  className="inline-flex min-h-11 items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
-                >
-                  Registrarme
-                </Link>
               </div>
             </div>
 
@@ -746,7 +751,7 @@ export default async function PortfolioPage({
         )}
 
         {portfolioMap ? (
-          <section id="portfolio-grid" className="relative left-1/2 mt-8 grid w-screen -translate-x-1/2 gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(560px,0.95fr)] lg:items-start">
+          <section id="portfolio-grid" className="relative left-1/2 mt-8 grid w-screen max-w-[100vw] -translate-x-1/2 gap-5 overflow-x-hidden px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(560px,0.95fr)] lg:items-start">
             <div className="hidden lg:sticky lg:top-5 lg:block">{portfolioMap}</div>
             <div
               className="lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto lg:pr-1 [&::-webkit-scrollbar]:hidden"
