@@ -1,0 +1,493 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const TOKEN_KEY = 'lead_portal_token';
+
+type Favorite = {
+  id: string;
+  tenant_id: string;
+  property_id?: string | null;
+  public_property_id?: string | null;
+  listing_snapshot?: Record<string, unknown>;
+  notes?: string | null;
+  created_at?: string | null;
+};
+
+type Appointment = {
+  id: string;
+  tenant_id?: string | null;
+  property_name?: string | null;
+  property_code?: string | null;
+  scheduled_date?: string | null;
+  scheduled_time?: string | null;
+  meeting_type?: string | null;
+  status?: string | null;
+  category?: string | null;
+  is_expired?: boolean;
+  google_meet_link?: string | null;
+  cancelled_at?: string | null;
+  completed_at?: string | null;
+};
+
+type TenantLink = {
+  tenant_id: string;
+  lead_id?: string | null;
+  is_buyer: boolean;
+};
+
+type MergeCandidate = {
+  id: string;
+  tenant_id: string;
+  full_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  source?: string | null;
+  created_at?: string | null;
+};
+
+type HomePayload = {
+  account: {
+    email: string;
+    full_name?: string | null;
+    phone?: string | null;
+  };
+  tenant_links: TenantLink[];
+  favorites: Favorite[];
+  appointments: {
+    upcoming: Appointment[];
+    cancelled: Appointment[];
+    past: Appointment[];
+    counts?: Record<string, number>;
+  };
+  search_profiles: {
+    id: string;
+    tenant_id: string;
+    summary?: string | null;
+    operation_type?: string | null;
+    property_type?: string | null;
+    locations?: string[];
+    is_active?: boolean;
+  }[];
+  documentation: {
+    status: string;
+    message: string;
+  };
+};
+
+function getToken(): string {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(TOKEN_KEY) || '';
+}
+
+async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const response = await fetch(`${BACKEND_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.detail || 'No pudimos cargar tu panel.');
+  }
+  return payload as T;
+}
+
+function fmtDate(value?: string | null): string {
+  if (!value) return 'Sin fecha';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtTime(value?: string | null): string {
+  return value ? value.slice(0, 5) : '--:--';
+}
+
+function appointmentLabel(item: Appointment): string {
+  if (item.status === 'cancelled' || item.category === 'cancelled') return 'Cancelada';
+  if (item.completed_at || item.status === 'completed') return 'Completada';
+  if (item.is_expired || item.category === 'past') return 'Expirada';
+  return item.status === 'confirmed' ? 'Confirmada' : 'Agendada';
+}
+
+function operationLabel(value?: string | null): string {
+  const map: Record<string, string> = {
+    sale: 'Comprar',
+    rent: 'Alquilar',
+    rent_short_term: 'Alquiler temporario',
+    rent_long_term: 'Alquiler largo plazo',
+    both: 'Comprar o alquilar',
+  };
+  return value ? map[value] || value : 'Sin operación';
+}
+
+function favoriteTitle(favorite: Favorite): string {
+  const snapshot = favorite.listing_snapshot || {};
+  return String(snapshot.name || snapshot.property_code || favorite.public_property_id || 'Propiedad guardada');
+}
+
+function firstImage(favorite: Favorite): string {
+  const images = favorite.listing_snapshot?.images;
+  if (Array.isArray(images) && images.length > 0) {
+    const first = images[0];
+    if (typeof first === 'string') return first;
+    if (first && typeof first === 'object' && 'url' in first) {
+      return String((first as { url?: unknown }).url || '');
+    }
+  }
+  return '';
+}
+
+export default function LeadPortalPanelClient() {
+  const [home, setHome] = useState<HomePayload | null>(null);
+  const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    operation_type: 'sale',
+    property_type: '',
+    price_min: '',
+    price_max: '',
+    locations: '',
+    summary: '',
+  });
+  const primaryTenantId = useMemo(() => {
+    return home?.tenant_links?.[0]?.tenant_id || home?.favorites?.[0]?.tenant_id || home?.appointments?.upcoming?.[0]?.['tenant_id'] || '';
+  }, [home]);
+
+  const load = async () => {
+    const token = getToken();
+    if (!token) {
+      window.location.href = '/perfil-lead/login';
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch<HomePayload>('/api/portal/buyer/home');
+      setHome(data);
+      const candidates = await apiFetch<{ candidates: MergeCandidate[] }>('/api/portal/buyer/merge-candidates');
+      setMergeCandidates(candidates.candidates || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos cargar tu panel.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const logout = () => {
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/';
+  };
+
+  const acceptMerge = async (candidateId: string) => {
+    setError(null);
+    try {
+      await apiFetch(`/api/portal/buyer/merge-candidates/${encodeURIComponent(candidateId)}/accept`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos fusionar el contacto.');
+    }
+  };
+
+  const createSearchProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!primaryTenantId) {
+      setError('Todavía no hay un tenant vinculado para crear alertas.');
+      return;
+    }
+    setSavingProfile(true);
+    setError(null);
+    try {
+      await apiFetch('/api/portal/buyer/search-profiles', {
+        method: 'POST',
+        body: JSON.stringify({
+          tenant_id: primaryTenantId,
+          preference_mode: 'notify',
+          operation_type: profileForm.operation_type || undefined,
+          property_type: profileForm.property_type || undefined,
+          price_min: profileForm.price_min ? Number(profileForm.price_min) : undefined,
+          price_max: profileForm.price_max ? Number(profileForm.price_max) : undefined,
+          locations: profileForm.locations
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          summary: profileForm.summary || undefined,
+          allow_cross_tenant: true,
+          desired_matches_per_batch: 10,
+        }),
+      });
+      setProfileForm({ operation_type: 'sale', property_type: '', price_min: '', price_max: '', locations: '', summary: '' });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos crear la alerta.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-100">
+        <p className="text-sm text-zinc-300">Cargando tu panel...</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-zinc-950 px-4 py-6 text-zinc-100">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Mi búsqueda</p>
+            <h1 className="mt-1 text-2xl font-semibold">Hola {home?.account.full_name || home?.account.email}</h1>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/" className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
+              Ver portfolios
+            </Link>
+            <button onClick={logout} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
+              Salir
+            </button>
+          </div>
+        </header>
+
+        {error && <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
+
+        {mergeCandidates.length > 0 && (
+          <section className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Encontramos consultas anteriores</h2>
+                <p className="mt-1 text-sm text-amber-50/80">
+                  Si reconocés alguno de estos contactos, podés fusionarlo con tu panel. Conservaremos el REF del primer contacto histórico.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {mergeCandidates.map((candidate) => (
+                <article key={candidate.id} className="rounded-xl border border-white/10 bg-black/25 p-3">
+                  <p className="font-semibold">{candidate.full_name || candidate.email || candidate.phone || 'Consulta previa'}</p>
+                  <p className="mt-1 text-xs text-zinc-300">
+                    {candidate.phone || candidate.email || 'Sin contacto visible'} · {candidate.source || 'origen sin dato'}
+                  </p>
+                  <button
+                    onClick={() => acceptMerge(candidate.id)}
+                    className="mt-3 rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-amber-200"
+                  >
+                    Fusionar con mi panel
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <GuideCard title="Favoritos" text="Usá el corazón de cualquier propiedad para armar tu lista corta y comparar mejor." />
+          <GuideCard title="Citas" text="Acá ves si tus visitas están activas, canceladas o vencidas, y los links virtuales cuando existan." />
+          <GuideCard title="Alertas" text="Definí tu criterio de búsqueda para que el sistema te acerque mejores matches." />
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <PanelCard title={`Favoritos (${home?.favorites.length || 0})`}>
+            {!home?.favorites.length ? (
+              <EmptyText>Guardá propiedades desde el corazón de cada card.</EmptyText>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {home.favorites.map((favorite) => {
+                  const image = firstImage(favorite);
+                  return (
+                    <article key={favorite.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt={favoriteTitle(favorite)} className="h-36 w-full object-cover" />
+                      ) : (
+                        <div className="flex h-36 items-center justify-center bg-zinc-900 text-sm text-zinc-500">Sin imagen</div>
+                      )}
+                      <div className="p-3">
+                        <h3 className="line-clamp-2 font-semibold">{favoriteTitle(favorite)}</h3>
+                        {favorite.notes && <p className="mt-2 text-xs text-zinc-400">{favorite.notes}</p>}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </PanelCard>
+
+          <PanelCard title="Perfil y documentación">
+            <div className="space-y-3 text-sm text-zinc-300">
+              <p>Email: {home?.account.email}</p>
+              <p>WhatsApp: {home?.account.phone || 'Pendiente'}</p>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <p className="font-semibold text-zinc-100">Documentación</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-400">
+                  {home?.documentation.message || 'Próximamente vas a poder preparar documentación desde acá.'}
+                </p>
+              </div>
+            </div>
+          </PanelCard>
+        </section>
+
+        <PanelCard title="Agenda de citas">
+          <AppointmentGroup title="Activas" items={home?.appointments.upcoming || []} />
+          <AppointmentGroup title="Canceladas" items={home?.appointments.cancelled || []} muted />
+          <AppointmentGroup title="Vencidas o expiradas" items={home?.appointments.past || []} muted />
+        </PanelCard>
+
+        <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <PanelCard title="Crear alerta de match">
+            <form onSubmit={createSearchProfile} className="space-y-3">
+              <select
+                value={profileForm.operation_type}
+                onChange={(event) => setProfileForm((prev) => ({ ...prev, operation_type: event.target.value }))}
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+              >
+                <option value="sale">Comprar</option>
+                <option value="rent">Alquilar</option>
+                <option value="both">Comprar o alquilar</option>
+              </select>
+              <input
+                value={profileForm.property_type}
+                onChange={(event) => setProfileForm((prev) => ({ ...prev, property_type: event.target.value }))}
+                placeholder="Tipo: apartment, house, ph..."
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  value={profileForm.price_min}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, price_min: event.target.value }))}
+                  placeholder="Precio mínimo"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+                <input
+                  value={profileForm.price_max}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, price_max: event.target.value }))}
+                  placeholder="Precio máximo"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+              </div>
+              <input
+                value={profileForm.locations}
+                onChange={(event) => setProfileForm((prev) => ({ ...prev, locations: event.target.value }))}
+                placeholder="Zonas separadas por coma"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+              />
+              <textarea
+                value={profileForm.summary}
+                onChange={(event) => setProfileForm((prev) => ({ ...prev, summary: event.target.value }))}
+                placeholder="Comentarios: qué te gustaría encontrar"
+                className="min-h-24 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+              />
+              <button
+                disabled={savingProfile}
+                className="w-full rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-cyan-300 disabled:opacity-60"
+              >
+                {savingProfile ? 'Guardando...' : 'Activar alerta'}
+              </button>
+            </form>
+          </PanelCard>
+
+          <PanelCard title={`Alertas activas (${home?.search_profiles.length || 0})`}>
+            {!home?.search_profiles.length ? (
+              <EmptyText>Todavía no cargaste criterios. Creá una alerta para recibir mejores opciones.</EmptyText>
+            ) : (
+              <div className="space-y-3">
+                {home.search_profiles.map((profile) => (
+                  <article key={profile.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="font-semibold">{operationLabel(profile.operation_type)}</p>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      {(profile.locations || []).join(', ') || 'Sin zonas'} · {profile.property_type || 'tipo abierto'}
+                    </p>
+                    {profile.summary && <p className="mt-2 text-sm text-zinc-300">{profile.summary}</p>}
+                  </article>
+                ))}
+              </div>
+            )}
+          </PanelCard>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function PanelCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function GuideCard({ title, text }: { title: string; text: string }) {
+  return (
+    <article className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
+      <h2 className="text-sm font-semibold text-cyan-100">{title}</h2>
+      <p className="mt-2 text-xs leading-5 text-cyan-50/80">{text}</p>
+    </article>
+  );
+}
+
+function EmptyText({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">{children}</p>;
+}
+
+function AppointmentGroup({ title, items, muted = false }: { title: string; items: Appointment[]; muted?: boolean }) {
+  return (
+    <div className="mt-4 first:mt-0">
+      <h3 className={`text-sm font-semibold ${muted ? 'text-zinc-400' : 'text-cyan-200'}`}>{title}</h3>
+      {!items.length ? (
+        <p className="mt-2 text-sm text-zinc-500">Sin citas en esta categoría.</p>
+      ) : (
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          {items.map((item) => (
+            <article key={item.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold">
+                    {fmtDate(item.scheduled_date)} · {fmtTime(item.scheduled_time)}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {item.property_name || item.property_code || 'Propiedad'} · {item.meeting_type === 'virtual' ? 'Virtual' : 'Presencial'}
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">
+                  {appointmentLabel(item)}
+                </span>
+              </div>
+              {item.google_meet_link && (
+                <a
+                  href={item.google_meet_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex rounded-lg bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-cyan-300"
+                >
+                  Abrir videollamada
+                </a>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

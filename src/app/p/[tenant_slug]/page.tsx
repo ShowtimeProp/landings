@@ -416,6 +416,19 @@ export default async function PortfolioPage({
     }
     return `/p/${tenant.slug}?${params.toString()}`;
   };
+  const portalParams = new URLSearchParams({
+    tenant_slug: tenant.slug,
+    next: '/perfil-lead/panel',
+  });
+  if (referralCode) portalParams.set('ref', referralCode);
+  if (campaignQueryString) {
+    const campaignParams = new URLSearchParams(campaignQueryString);
+    campaignParams.forEach((value, key) => {
+      if (key !== 'theme') portalParams.set(key, value);
+    });
+  }
+  const portalLoginHref = `/perfil-lead/login?${portalParams.toString()}`;
+  const portalSignupHref = `/perfil-lead/registro?${portalParams.toString()}`;
   const mobileThemeHref = themeHref(nextTheme(theme));
   const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
   const portfolioMap = hasPortfolioMap && tenant.map ? (
@@ -608,6 +621,20 @@ export default async function PortfolioPage({
                     Portfolio premium activo
                   </span>
                 )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={portalLoginHref}
+                  className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition ${emailButtonClass}`}
+                >
+                  Ingresar
+                </Link>
+                <Link
+                  href={portalSignupHref}
+                  className="inline-flex min-h-11 items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
+                >
+                  Registrarme
+                </Link>
               </div>
             </div>
 

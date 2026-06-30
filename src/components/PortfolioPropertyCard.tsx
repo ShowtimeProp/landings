@@ -101,7 +101,19 @@ export default function PortfolioPropertyCard({
   const fallbackQuery = referralCode ? `ref=${encodeURIComponent(referralCode)}` : '';
   const query = (campaignQueryString || '').trim() || fallbackQuery;
   const href = query ? `${baseHref}?${query}` : baseHref;
-  const favoriteHref = `/perfil-lead/login?next=${encodeURIComponent(href)}&property_id=${encodeURIComponent(item.id)}`;
+  const favoriteParams = new URLSearchParams({
+    tenant_slug: tenantSlug,
+    property_id: item.id,
+    next: '/perfil-lead/panel',
+  });
+  if (referralCode) favoriteParams.set('ref', referralCode);
+  if (campaignQueryString) {
+    const campaignParams = new URLSearchParams(campaignQueryString);
+    campaignParams.forEach((value, key) => {
+      if (key !== 'theme' && key !== 'property_id') favoriteParams.set(key, value);
+    });
+  }
+  const favoriteHref = `/perfil-lead/login?${favoriteParams.toString()}`;
 
   const imageList = useMemo(() => {
     return (item.images || [])
