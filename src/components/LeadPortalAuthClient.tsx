@@ -8,6 +8,8 @@ const PORTAL_API_BASE = '/api/portal';
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const PORTAL_VIDEO_URL = process.env.NEXT_PUBLIC_LEAD_PORTAL_VIDEO_URL || '';
 const TOKEN_KEY = 'lead_portal_token';
+const ACCOUNT_KEY = 'lead_portal_account';
+const AUTH_EVENT = 'lead-portal-auth-changed';
 
 type Mode = 'login' | 'signup';
 type SignupStep = 'identity' | 'account' | 'preferences';
@@ -20,7 +22,15 @@ type Props = {
   initialQuery: Record<string, string>;
   presentation?: Presentation;
   onClose?: () => void;
+  onAuthenticated?: (payload: AuthPayload) => void;
   theme?: PortalTheme;
+};
+
+type AuthPayload = {
+  access_token?: string;
+  account?: unknown;
+  favorite?: unknown;
+  next?: string;
 };
 
 type GoogleAccounts = {
@@ -162,6 +172,7 @@ export default function LeadPortalAuthClient({
   initialQuery,
   presentation = 'page',
   onClose,
+  onAuthenticated,
   theme = 'dark',
 }: Props) {
   const [activeMode, setActiveMode] = useState<Mode>(mode);
@@ -255,9 +266,18 @@ export default function LeadPortalAuthClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleReady, activeMode, authView, isLight]);
 
-  const persistAndRedirect = (payload: { access_token?: string; next?: string }) => {
+  const persistAndContinue = (payload: AuthPayload) => {
     if (payload.access_token) {
       window.localStorage.setItem(TOKEN_KEY, payload.access_token);
+    }
+    if (payload.account) {
+      window.localStorage.setItem(ACCOUNT_KEY, JSON.stringify(payload.account));
+    }
+    window.dispatchEvent(new CustomEvent(AUTH_EVENT, { detail: payload }));
+    onAuthenticated?.(payload);
+    if (isModal) {
+      onClose?.();
+      return;
     }
     window.location.href = payload.next || nextHref || '/perfil-lead/panel';
   };
@@ -277,7 +297,7 @@ export default function LeadPortalAuthClient({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.detail || 'No pudimos iniciar sesion con Google.');
-      persistAndRedirect(payload);
+      persistAndContinue(payload);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No pudimos iniciar sesion con Google.';
       setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);
@@ -376,7 +396,7 @@ export default function LeadPortalAuthClient({
         }
         throw new Error(payload?.detail || 'No pudimos completar la operacion.');
       }
-      persistAndRedirect(payload);
+      persistAndContinue(payload);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No pudimos completar la operacion.';
       setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);

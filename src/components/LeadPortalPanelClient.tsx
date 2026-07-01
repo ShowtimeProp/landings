@@ -9,9 +9,11 @@ const TOKEN_KEY = 'lead_portal_token';
 type Favorite = {
   id: string;
   tenant_id: string;
+  lead_id?: string | null;
   property_id?: string | null;
   public_property_id?: string | null;
   listing_snapshot?: Record<string, unknown>;
+  source_landing_token?: string | null;
   notes?: string | null;
   created_at?: string | null;
 };
@@ -145,12 +147,40 @@ function firstImage(favorite: Favorite): string {
   return '';
 }
 
+function favoriteHref(favorite: Favorite): string {
+  const snapshot = favorite.listing_snapshot || {};
+  const slug = String(snapshot.slug || '').trim();
+  const token = String(favorite.source_landing_token || '');
+  const parts = token.startsWith('public:') ? token.split(':') : [];
+  const tenantSlug = parts.length >= 3 ? parts[1] : '';
+  if (tenantSlug && slug) return `/p/${tenantSlug}/${slug}`;
+  if (tenantSlug && favorite.property_id) return `/p/${tenantSlug}/${favorite.property_id}`;
+  return '#';
+}
+
+function tomorrowISO(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 export default function LeadPortalPanelClient() {
   const [home, setHome] = useState<HomePayload | null>(null);
   const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingProfileEdit, setSavingProfileEdit] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileEdit, setProfileEdit] = useState({ full_name: '', phone: '' });
+  const [visitFavoriteId, setVisitFavoriteId] = useState<string | null>(null);
+  const [savingVisit, setSavingVisit] = useState(false);
+  const [visitForm, setVisitForm] = useState({
+    scheduled_date: tomorrowISO(),
+    scheduled_time: '15:00',
+    meeting_type: 'in_person',
+    notes: '',
+  });
   const [profileForm, setProfileForm] = useState({
     operation_type: 'sale',
     property_type: '',
@@ -174,6 +204,10 @@ export default function LeadPortalPanelClient() {
     try {
       const data = await apiFetch<HomePayload>('/api/portal/buyer/home');
       setHome(data);
+      setProfileEdit({
+        full_name: data.account.full_name || '',
+        phone: data.account.phone || '',
+      });
       const candidates = await apiFetch<{ candidates: MergeCandidate[] }>('/api/portal/buyer/merge-candidates');
       setMergeCandidates(candidates.candidates || []);
     } catch (err) {
@@ -202,6 +236,45 @@ export default function LeadPortalPanelClient() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos fusionar el contacto.');
+    }
+  };
+
+  const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingProfileEdit(true);
+    setError(null);
+    try {
+      await apiFetch('/api/portal/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          full_name: profileEdit.full_name || undefined,
+          phone: profileEdit.phone || undefined,
+        }),
+      });
+      setEditingProfile(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos actualizar tu perfil.');
+    } finally {
+      setSavingProfileEdit(false);
+    }
+  };
+
+  const createVisit = async (favorite: Favorite) => {
+    setSavingVisit(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/portal/favorites/${encodeURIComponent(favorite.id)}/appointment`, {
+        method: 'POST',
+        body: JSON.stringify(visitForm),
+      });
+      setVisitFavoriteId(null);
+      setVisitForm({ scheduled_date: tomorrowISO(), scheduled_time: '15:00', meeting_type: 'in_person', notes: '' });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos crear la visita.');
+    } finally {
+      setSavingVisit(false);
     }
   };
 
@@ -305,24 +378,88 @@ export default function LeadPortalPanelClient() {
         </section>
 
         <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <PanelCard title={`Favoritos (${home?.favorites.length || 0})`}>
+          <PanelCard title={`Mis Favoritos (${home?.favorites.length || 0})`}>
             {!home?.favorites.length ? (
               <EmptyText>Guardá propiedades desde el corazón de cada card.</EmptyText>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {home.favorites.map((favorite) => {
                   const image = firstImage(favorite);
+                  const href = favoriteHref(favorite);
+                  const isVisitOpen = visitFavoriteId === favorite.id;
                   return (
                     <article key={favorite.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                      {image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt={favoriteTitle(favorite)} className="h-36 w-full object-cover" />
-                      ) : (
-                        <div className="flex h-36 items-center justify-center bg-zinc-900 text-sm text-zinc-500">Sin imagen</div>
-                      )}
+                      <a href={href} target="_blank" rel="noreferrer" className={href === '#' ? 'pointer-events-none' : 'block'}>
+                        {image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={image} alt={favoriteTitle(favorite)} className="h-36 w-full object-cover transition hover:opacity-90" />
+                        ) : (
+                          <div className="flex h-36 items-center justify-center bg-zinc-900 text-sm text-zinc-500">Sin imagen</div>
+                        )}
+                      </a>
                       <div className="p-3">
                         <h3 className="line-clamp-2 font-semibold">{favoriteTitle(favorite)}</h3>
                         {favorite.notes && <p className="mt-2 text-xs text-zinc-400">{favorite.notes}</p>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {href !== '#' && (
+                            <a href={href} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10">
+                              Ver propiedad
+                            </a>
+                          )}
+                          {favorite.property_id && (
+                            <button
+                              type="button"
+                              onClick={() => setVisitFavoriteId(isVisitOpen ? null : favorite.id)}
+                              className="rounded-lg bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-cyan-300"
+                            >
+                              Crear Visita
+                            </button>
+                          )}
+                        </div>
+                        {isVisitOpen && (
+                          <form
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              void createVisit(favorite);
+                            }}
+                            className="mt-3 space-y-2 rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-3"
+                          >
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <input
+                                type="date"
+                                required
+                                value={visitForm.scheduled_date}
+                                onChange={(event) => setVisitForm((prev) => ({ ...prev, scheduled_date: event.target.value }))}
+                                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs outline-none focus:border-cyan-300"
+                              />
+                              <input
+                                type="time"
+                                required
+                                value={visitForm.scheduled_time}
+                                onChange={(event) => setVisitForm((prev) => ({ ...prev, scheduled_time: event.target.value }))}
+                                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs outline-none focus:border-cyan-300"
+                              />
+                            </div>
+                            <select
+                              value={visitForm.meeting_type}
+                              onChange={(event) => setVisitForm((prev) => ({ ...prev, meeting_type: event.target.value }))}
+                              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs outline-none focus:border-cyan-300"
+                            >
+                              <option value="in_person">Presencial</option>
+                              <option value="virtual">Virtual</option>
+                              <option value="phone">Llamada</option>
+                            </select>
+                            <textarea
+                              value={visitForm.notes}
+                              onChange={(event) => setVisitForm((prev) => ({ ...prev, notes: event.target.value }))}
+                              placeholder="Comentario opcional"
+                              className="min-h-16 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs outline-none focus:border-cyan-300"
+                            />
+                            <button disabled={savingVisit} className="w-full rounded-lg bg-cyan-300 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-60">
+                              {savingVisit ? 'Creando...' : 'Confirmar visita'}
+                            </button>
+                          </form>
+                        )}
                       </div>
                     </article>
                   );
@@ -333,8 +470,40 @@ export default function LeadPortalPanelClient() {
 
           <PanelCard title="Perfil y documentación">
             <div className="space-y-3 text-sm text-zinc-300">
-              <p>Email: {home?.account.email}</p>
-              <p>WhatsApp: {home?.account.phone || 'Pendiente'}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-zinc-100">Datos básicos</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingProfile((value) => !value)}
+                  className="rounded-lg border border-white/10 px-2.5 py-1 text-xs font-semibold hover:bg-white/10"
+                >
+                  {editingProfile ? 'Cancelar' : 'Editar'}
+                </button>
+              </div>
+              {editingProfile ? (
+                <form onSubmit={saveProfile} className="space-y-2">
+                  <input
+                    value={profileEdit.full_name}
+                    onChange={(event) => setProfileEdit((prev) => ({ ...prev, full_name: event.target.value }))}
+                    placeholder="Nombre completo"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                  />
+                  <input
+                    value={profileEdit.phone}
+                    onChange={(event) => setProfileEdit((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="WhatsApp"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                  />
+                  <button disabled={savingProfileEdit} className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-cyan-300 disabled:opacity-60">
+                    {savingProfileEdit ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <p>Email: {home?.account.email}</p>
+                  <p>WhatsApp: {home?.account.phone || 'Pendiente'}</p>
+                </>
+              )}
               <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
                 <p className="font-semibold text-zinc-100">Documentación</p>
                 <p className="mt-1 text-xs leading-5 text-zinc-400">

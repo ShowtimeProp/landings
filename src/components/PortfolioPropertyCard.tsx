@@ -1,8 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
+
+const PORTAL_API_BASE = '/api/portal';
+const TOKEN_KEY = 'lead_portal_token';
+const AUTH_EVENT = 'lead-portal-auth-changed';
 
 type PortfolioTheme = 'dark' | 'soft' | 'light';
 
@@ -125,9 +129,25 @@ export default function PortfolioPropertyCard({
 
   const [imageIndex, setImageIndex] = useState(0);
   const [showFavoriteAuth, setShowFavoriteAuth] = useState(false);
+  const [hasPortalSession, setHasPortalSession] = useState(false);
+  const [favoriteSaved, setFavoriteSaved] = useState(false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
   const hasManyImages = imageList.length > 1;
   const tourUrl = (item.tour_virtual_url || '').trim();
   const hasTourPreview = Boolean(tourUrl);
+
+  useEffect(() => {
+    const syncSession = () => {
+      setHasPortalSession(Boolean(window.localStorage.getItem(TOKEN_KEY)));
+    };
+    syncSession();
+    window.addEventListener(AUTH_EVENT, syncSession);
+    window.addEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
 
   const safeImageIndex = imageList.length ? Math.min(imageIndex, imageList.length - 1) : 0;
   const currentImage = imageList[safeImageIndex] || null;
@@ -173,6 +193,52 @@ export default function PortfolioPropertyCard({
     e.stopPropagation();
     if (!hasManyImages) return;
     setImageIndex((prev) => (prev + 1) % imageList.length);
+  };
+
+  const buildFavoritePayload = () => {
+    const campaign: Record<string, string> = {};
+    Object.entries(favoriteQuery).forEach(([key, value]) => {
+      if (['tenant_slug', 'property_id', 'ref', 'next'].includes(key)) return;
+      if (value) campaign[key] = String(value);
+    });
+    return {
+      tenant_slug: tenantSlug,
+      property_id: item.id,
+      ref: favoriteQuery.ref || null,
+      page_url: typeof window !== 'undefined' ? window.location.href : undefined,
+      campaign,
+    };
+  };
+
+  const saveFavorite = async () => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setShowFavoriteAuth(true);
+      return;
+    }
+    setSavingFavorite(true);
+    try {
+      const response = await fetch(`${PORTAL_API_BASE}/landing/favorites`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(buildFavoritePayload()),
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.dispatchEvent(new Event(AUTH_EVENT));
+        setShowFavoriteAuth(true);
+        return;
+      }
+      if (!response.ok) throw new Error('No pudimos guardar el favorito.');
+      setFavoriteSaved(true);
+    } catch {
+      setShowFavoriteAuth(true);
+    } finally {
+      setSavingFavorite(false);
+    }
   };
 
   return (
@@ -258,13 +324,21 @@ export default function PortfolioPropertyCard({
         <button
           type="button"
           aria-label="Guardar favorito"
-          className="absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.55)] transition hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          aria-pressed={favoriteSaved}
+          disabled={savingFavorite}
+          className={`absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full drop-shadow-[0_2px_7px_rgba(0,0,0,0.55)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-60 ${
+            favoriteSaved ? 'text-red-500' : 'text-white hover:text-red-600'
+          }`}
           onClick={(event) => {
             event.stopPropagation();
-            setShowFavoriteAuth(true);
+            if (hasPortalSession) {
+              void saveFavorite();
+            } else {
+              setShowFavoriteAuth(true);
+            }
           }}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8" fill={favoriteSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
           </svg>
         </button>
@@ -277,6 +351,10 @@ export default function PortfolioPropertyCard({
           presentation="modal"
           theme={isLight ? 'light' : 'dark'}
           onClose={() => setShowFavoriteAuth(false)}
+          onAuthenticated={(payload) => {
+            if (payload.favorite) setFavoriteSaved(true);
+            setShowFavoriteAuth(false);
+          }}
         />
       )}
 
