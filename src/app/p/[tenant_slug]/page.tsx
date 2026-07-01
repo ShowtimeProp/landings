@@ -9,6 +9,7 @@ import PortfolioContactActions from '@/components/PortfolioContactActions';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import ShareRail from '@/components/ShareRail';
 import TenantGtm from '@/components/TenantGtm';
+import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { TenantSocialLinks } from '@/components/social-links';
 import QRCode from 'qrcode';
 
@@ -496,8 +497,7 @@ export default async function PortfolioPage({
       if (key !== 'theme') portalParams.set(key, value);
     });
   }
-  const portalLoginHref = `/perfil-lead/login?${portalParams.toString()}`;
-  const portalSignupHref = `/perfil-lead/registro?${portalParams.toString()}`;
+  const portalQuery = Object.fromEntries(portalParams.entries());
   const nextPortfolioTheme = nextTheme(theme);
   const nextPortfolioThemeLabel = themeLabel(nextPortfolioTheme);
   const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
@@ -599,25 +599,7 @@ export default async function PortfolioPage({
               <ThemeIcon theme={nextPortfolioTheme} className="h-5 w-5" />
             </Link>
 
-            <nav
-              className={`flex items-center gap-1 rounded-full p-1 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px] ${
-                isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
-              }`}
-              aria-label="Acceso del comprador"
-            >
-              <Link
-                href={portalLoginHref}
-                className={`rounded-full px-2.5 py-1 transition ${isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
-              >
-                Ingresar
-              </Link>
-              <Link
-                href={portalSignupHref}
-                className="rounded-full bg-white px-2.5 py-1 text-zinc-800 shadow-sm transition hover:bg-zinc-100"
-              >
-                Registrarme
-              </Link>
-            </nav>
+            <LeadPortalAuthLauncher query={portalQuery} isLight={isLight} />
           </div>
         </div>
       </header>

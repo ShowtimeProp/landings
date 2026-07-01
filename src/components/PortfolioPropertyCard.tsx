@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
 
 type PortfolioTheme = 'dark' | 'soft' | 'light';
 
@@ -113,7 +114,7 @@ export default function PortfolioPropertyCard({
       if (key !== 'theme' && key !== 'property_id') favoriteParams.set(key, value);
     });
   }
-  const favoriteHref = `/perfil-lead/login?${favoriteParams.toString()}`;
+  const favoriteQuery = Object.fromEntries(favoriteParams.entries());
 
   const imageList = useMemo(() => {
     return (item.images || [])
@@ -123,6 +124,7 @@ export default function PortfolioPropertyCard({
   }, [item.images]);
 
   const [imageIndex, setImageIndex] = useState(0);
+  const [showFavoriteAuth, setShowFavoriteAuth] = useState(false);
   const hasManyImages = imageList.length > 1;
   const tourUrl = (item.tour_virtual_url || '').trim();
   const hasTourPreview = Boolean(tourUrl);
@@ -253,17 +255,29 @@ export default function PortfolioPropertyCard({
             Tour 360
           </span>
         )}
-        <Link
-          href={favoriteHref}
+        <button
+          type="button"
           aria-label="Guardar favorito"
           className="absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.55)] transition hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowFavoriteAuth(true);
+          }}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
           </svg>
-        </Link>
+        </button>
       </div>
+
+      {showFavoriteAuth && (
+        <LeadPortalAuthClient
+          mode="login"
+          initialQuery={favoriteQuery}
+          presentation="modal"
+          onClose={() => setShowFavoriteAuth(false)}
+        />
+      )}
 
       <div className="relative space-y-3 p-4">
         <h2 className={`line-clamp-2 text-lg font-semibold leading-snug ${titleTextClass}`}>{item.name}</h2>
