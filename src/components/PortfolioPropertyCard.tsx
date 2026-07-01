@@ -275,6 +275,7 @@ export default function PortfolioPropertyCard({
           mode="login"
           initialQuery={favoriteQuery}
           presentation="modal"
+          theme={isLight ? 'light' : 'dark'}
           onClose={() => setShowFavoriteAuth(false)}
         />
       )}

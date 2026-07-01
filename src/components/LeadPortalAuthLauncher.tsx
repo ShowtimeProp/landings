@@ -49,6 +49,7 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
               mode={mode}
               initialQuery={query}
               presentation="modal"
+              theme={isLight ? 'light' : 'dark'}
               onClose={() => setMode(null)}
             />,
             document.body
