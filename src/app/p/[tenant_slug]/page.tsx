@@ -54,6 +54,7 @@ type Tenant = {
   martillero_responsable?: string | null;
   martillero_registro?: string | null;
   portfolio_bio?: string | null;
+  portfolio_og_description?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
   vcard_qr_data_url?: string | null;
@@ -144,6 +145,9 @@ const OPERATION_LABELS: Record<string, string> = {
   rent_long_term: 'Alquiler largo plazo',
   both: 'Venta y alquiler',
 };
+
+const DEFAULT_PORTFOLIO_OG_DESCRIPTION =
+  'Descubre nuestro portfolio de propiedades! Atendemos 24/7 todo el año! Respondemos tus consultas al instante!';
 
 async function fetchPortfolio(
   tenantSlug: string,
@@ -341,7 +345,8 @@ export async function generateMetadata({
   const agencyName = String(data.tenant.tenant_name || '').trim() || data.tenant.name;
   const title = `${advisorName} | ${agencyName}`;
   const siteName = 'Atendemos 24/7 todo el año';
-  const description = 'Descubre nuestro portfolio de propiedades! Atendemos 24/7 todo el año! Respondemos tus consultas al instante!';
+  const description =
+    String(data.tenant.portfolio_og_description || '').trim() || DEFAULT_PORTFOLIO_OG_DESCRIPTION;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}`;
   const ogUrl = referralCode ? `${canonicalUrl}?ref=${encodeURIComponent(referralCode)}` : canonicalUrl;
   const ogImage = pickPortfolioImage(data);
