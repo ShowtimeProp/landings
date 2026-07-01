@@ -311,11 +311,13 @@ function getImageUrl(img: unknown): string {
 }
 
 function pickPortfolioImage(data: ApiResponse): string | null {
+  if (data.tenant.profile_photo_url) return data.tenant.profile_photo_url;
+  if (data.tenant.logo_url) return data.tenant.logo_url;
   for (const property of data.properties || []) {
     const image = (property.images || []).map(getImageUrl).find(Boolean);
     if (image) return image;
   }
-  return data.tenant.logo_url || data.tenant.profile_photo_url || null;
+  return null;
 }
 
 export async function generateMetadata({
@@ -328,8 +330,13 @@ export async function generateMetadata({
   if (!data) {
     return { title: 'Portfolio no encontrado | ShowtimeProp' };
   }
-  const title = `Portfolio | ${data.tenant.name}`;
-  const description = `Propiedades de ${data.tenant.name}`;
+  const advisorName =
+    String(data.tenant.realtor_name || '').trim() ||
+    String(data.tenant.tenant_name || '').trim() ||
+    data.tenant.name;
+  const agencyName = String(data.tenant.tenant_name || '').trim() || data.tenant.name;
+  const title = `${advisorName} | ${agencyName}`;
+  const description = `Te invito a ver nuestro portfolio de propiedades!\nTe atendemos las 24/7 los 365 dias del año 👍`;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}`;
   const ogImage = pickPortfolioImage(data);
 
