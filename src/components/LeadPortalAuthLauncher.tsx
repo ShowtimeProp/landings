@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
 
 type Mode = 'login' | 'signup';
@@ -12,6 +13,11 @@ type Props = {
 
 export default function LeadPortalAuthLauncher({ query, isLight = false }: Props) {
   const [mode, setMode] = useState<Mode | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <>
@@ -37,14 +43,17 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
         </button>
       </nav>
 
-      {mode && (
-        <LeadPortalAuthClient
-          mode={mode}
-          initialQuery={query}
-          presentation="modal"
-          onClose={() => setMode(null)}
-        />
-      )}
+      {mode && mounted
+        ? createPortal(
+            <LeadPortalAuthClient
+              mode={mode}
+              initialQuery={query}
+              presentation="modal"
+              onClose={() => setMode(null)}
+            />,
+            document.body
+          )
+        : null}
     </>
   );
 }

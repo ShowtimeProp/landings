@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -140,6 +141,7 @@ export default function LeadPortalAuthClient({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const context = useMemo(() => contextFromQuery(initialQuery), [initialQuery]);
   const nextHref = context.next || '/perfil-lead/panel';
@@ -148,6 +150,10 @@ export default function LeadPortalAuthClient({
   const isModal = presentation === 'modal';
   const isSignup = activeMode === 'signup';
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setActiveMode(mode);
@@ -543,8 +549,12 @@ export default function LeadPortalAuthClient({
   );
 
   if (isModal) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/72 px-3 py-4 backdrop-blur-sm sm:px-5">
+    if (!mounted) return null;
+    return createPortal(
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-black/72 px-3 py-4 backdrop-blur-sm sm:px-5"
+        style={{ zIndex: 2147483647, isolation: 'isolate' }}
+      >
         <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl">
           <div className="max-h-[calc(100vh-2rem)] overflow-y-auto p-3 sm:p-4">
             <div className="lg:hidden">
@@ -553,7 +563,8 @@ export default function LeadPortalAuthClient({
             <div className="mt-3 lg:mt-0">{content}</div>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
