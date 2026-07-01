@@ -186,10 +186,51 @@ function normalizeTheme(raw: string | null | undefined): PortfolioTheme {
   return 'dark';
 }
 
-function nextTheme(theme: PortfolioTheme): PortfolioTheme {
-  if (theme === 'dark') return 'soft';
-  if (theme === 'soft') return 'light';
-  return 'dark';
+function ThemeIcon({ theme, className = 'h-4 w-4' }: { theme: PortfolioTheme; className?: string }) {
+  if (theme === 'light') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+    );
+  }
+  if (theme === 'soft') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+      />
+    </svg>
+  );
+}
+
+function ECardIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 4.75h10A2.25 2.25 0 0119.25 7v10A2.25 2.25 0 0117 19.25H7A2.25 2.25 0 014.75 17V7A2.25 2.25 0 017 4.75z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8.5 9.25h7M8.5 12h7M8.5 14.75h4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.25 16.25l2.5 2.5" />
+    </svg>
+  );
 }
 
 function normalizeReferralCode(raw?: string | null): string | null {
@@ -429,7 +470,6 @@ export default async function PortfolioPage({
   }
   const portalLoginHref = `/perfil-lead/login?${portalParams.toString()}`;
   const portalSignupHref = `/perfil-lead/registro?${portalParams.toString()}`;
-  const mobileThemeHref = themeHref(nextTheme(theme));
   const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
   const portfolioMap = hasPortfolioMap && tenant.map ? (
     <PortfolioMapLoader
@@ -497,10 +537,10 @@ export default async function PortfolioPage({
       <div className={`pointer-events-none fixed inset-0 -z-10 ${overlayClass}`} />
 
       <header className={`border-b backdrop-blur-md ${headerClass}`}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center justify-center gap-3 sm:justify-start">
             <div
-              className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${
                 isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
               }`}
             >
@@ -511,74 +551,47 @@ export default async function PortfolioPage({
                 <span className="text-sm font-semibold">{tenant.name.charAt(0).toUpperCase()}</span>
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>Portfolio</p>
-              <p className="text-sm font-semibold">{tenant.name}</p>
+              <p className="truncate text-sm font-semibold">{tenant.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={mobileThemeHref}
-              aria-label="Cambiar tema"
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full sm:hidden ${
-                isLight ? 'border border-zinc-200 bg-zinc-100 text-zinc-900' : 'border border-white/15 bg-white/5 text-zinc-100'
-              }`}
-            >
-              {theme === 'dark' ? (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : theme === 'soft' ? (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
-                  />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </Link>
+
+          <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
             <nav
-              className={`hidden items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:flex ${
+              className={`flex items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
                 isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
               }`}
+              aria-label="Estilo visual"
             >
               <Link
                 href={themeHref('light')}
-                className={`rounded-full px-2.5 py-1 transition ${theme === 'light' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
+                aria-label="Tema claro"
+                title="Tema claro"
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'light' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
               >
-                Light
+                <ThemeIcon theme="light" />
               </Link>
               <Link
                 href={themeHref('soft')}
-                className={`rounded-full px-2.5 py-1 transition ${theme === 'soft' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
+                aria-label="Tema suave"
+                title="Tema suave"
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'soft' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
               >
-                Soft
+                <ThemeIcon theme="soft" />
               </Link>
               <Link
                 href={themeHref('dark')}
-                className={`rounded-full px-2.5 py-1 transition ${theme === 'dark' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
+                aria-label="Tema oscuro"
+                title="Tema oscuro"
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'dark' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
               >
-                Dark
+                <ThemeIcon theme="dark" />
               </Link>
             </nav>
+
             <nav
-              className={`hidden items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:flex ${
+              className={`flex items-center gap-1 rounded-full p-1 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px] ${
                 isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
               }`}
               aria-label="Acceso del comprador"
@@ -596,7 +609,7 @@ export default async function PortfolioPage({
                 Registrarme
               </Link>
             </nav>
-            <span className={`hidden rounded-full border px-3 py-1 text-xs md:inline-flex ${headerBadgeClass}`}>
+            <span className={`hidden rounded-full border px-3 py-1 text-xs lg:inline-flex ${headerBadgeClass}`}>
               {properties.length} propiedades
             </span>
           </div>
@@ -607,10 +620,10 @@ export default async function PortfolioPage({
         <section className={`relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
           <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl" />
-          <div className="relative z-10 mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Asesor de ventas</p>
-              <div className="mt-3 flex items-center gap-4 sm:gap-5">
+          <div className="relative z-10 mx-auto grid max-w-7xl gap-6 text-center lg:grid-cols-[1fr_auto] lg:items-center lg:text-left">
+            <div className="flex flex-col items-center lg:items-start">
+              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Asesor inmobiliario</p>
+              <div className="mt-3 flex flex-col items-center gap-3 sm:flex-row sm:gap-5">
                 <div
                   className={`flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-32 sm:w-32 ${
                     isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
@@ -625,10 +638,10 @@ export default async function PortfolioPage({
                 </div>
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h1>
               </div>
-              <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtleTextClass}`}>
+              <p className={`mx-auto mt-3 max-w-2xl text-sm leading-relaxed lg:mx-0 ${subtleTextClass}`}>
                 {portfolioBio}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap justify-center gap-2 lg:justify-start">
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
                   {properties.length} propiedades
                 </span>
@@ -643,7 +656,7 @@ export default async function PortfolioPage({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col items-center gap-3 lg:flex-row lg:justify-end lg:gap-4">
               <div className="space-y-2">
                 <PortfolioContactActions
                   backendUrl={BACKEND_URL}
@@ -654,8 +667,23 @@ export default async function PortfolioPage({
                   campaignQueryString={campaignQueryString}
                   emailButtonClass={emailButtonClass}
                   themeMode={theme}
+                  className="justify-center lg:justify-start"
+                  extraAction={
+                    vcardUrl ? (
+                      <a
+                        href={vcardUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Agenda mis datos"
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition lg:hidden ${emailButtonClass}`}
+                      >
+                        <ECardIcon />
+                        E-Card
+                      </a>
+                    ) : null
+                  }
                 />
-                <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="pt-1" />
+                <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="justify-center pt-1 lg:justify-start" />
               </div>
               {vcardUrl && (
                 <a
@@ -663,7 +691,7 @@ export default async function PortfolioPage({
                   target="_blank"
                   rel="noreferrer"
                   title="Agenda mis datos"
-                  className={`group inline-flex flex-col items-center rounded-xl border p-1.5 transition ${
+                  className={`group hidden flex-col items-center rounded-xl border p-1.5 transition lg:inline-flex ${
                     isLight
                       ? 'border-cyan-300/80 bg-cyan-50/90 hover:border-cyan-400 hover:bg-cyan-100'
                       : 'border-cyan-300/35 bg-cyan-400/10 hover:border-cyan-300/60 hover:bg-cyan-300/15'

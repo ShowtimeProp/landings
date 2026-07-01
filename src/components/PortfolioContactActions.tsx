@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 type ThemeMode = 'light' | 'soft' | 'dark';
@@ -14,6 +14,8 @@ type Props = {
   campaignQueryString?: string;
   emailButtonClass: string;
   themeMode: ThemeMode;
+  className?: string;
+  extraAction?: ReactNode;
 };
 
 const CAMPAIGN_KEYS = [
@@ -51,6 +53,8 @@ export default function PortfolioContactActions({
   campaignQueryString,
   emailButtonClass,
   themeMode,
+  className = '',
+  extraAction,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -157,7 +161,7 @@ export default function PortfolioContactActions({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className={`flex flex-wrap gap-2 ${className}`}>
         {whatsappUrl && (
           <a
             href={whatsappUrl}
@@ -179,6 +183,7 @@ export default function PortfolioContactActions({
         >
           Email
         </button>
+        {extraAction}
       </div>
       {success ? (
         <p className="text-[11px] font-medium text-emerald-400">
