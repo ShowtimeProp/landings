@@ -370,7 +370,12 @@ export default function LeadPortalAuthClient({
         body: JSON.stringify(body),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.detail || 'No pudimos completar la operacion.');
+      if (!response.ok) {
+        if (response.status === 409 && activeMode === 'signup') {
+          throw new Error('Ya hay un panel con ese email. Ingresá con tu contraseña o usá recuperar contraseña.');
+        }
+        throw new Error(payload?.detail || 'No pudimos completar la operacion.');
+      }
       persistAndRedirect(payload);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No pudimos completar la operacion.';
@@ -398,14 +403,14 @@ export default function LeadPortalAuthClient({
     if (signupStep === 'preferences') setSignupStep('account');
   };
 
-  const formTitle = authView === 'forgot' ? 'Recuperar contraseña' : activeMode === 'login' ? 'Volver a mi panel' : 'Crear mi panel gratis';
+  const formTitle = authView === 'forgot' ? 'Recuperar contraseña' : activeMode === 'login' ? 'Volver a mi panel' : 'Crear mi perfil gratis';
   const formSubtitle =
     authView === 'forgot'
       ? 'Te enviamos un enlace seguro para definir una nueva contraseña.'
       : activeMode === 'login'
       ? 'Ingresa con tu email o Google si ya registraste tus datos.'
       : signupStep === 'identity'
-      ? 'Primero protegemos tu REF y asociamos tus datos basicos.'
+      ? 'Herramientas, info e IA para acompañarte y que no se te pase nada.'
       : signupStep === 'account'
       ? 'Ahora crea el acceso para volver cuando quieras.'
       : 'Elegí qué operación te interesa para personalizar el seguimiento.';
