@@ -4,7 +4,15 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const PORTAL_API_BASE = '/api/portal';
+
+function passwordPolicyMessage(value: string): string | null {
+  const password = String(value || '');
+  if (password.length < 10) return 'Usá al menos 10 caracteres.';
+  if (!/[A-Za-z]/.test(password)) return 'Incluí al menos una letra.';
+  if (!/\d/.test(password)) return 'Incluí al menos un número.';
+  return null;
+}
 
 function EyeIcon({ off = false }: { off?: boolean }) {
   return off ? (
@@ -39,13 +47,18 @@ function ResetPasswordForm() {
       setError('El enlace no es valido o esta incompleto.');
       return;
     }
+    const policyError = passwordPolicyMessage(password);
+    if (policyError) {
+      setError(policyError);
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Las contrasenas no coinciden.');
       return;
     }
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/portal/auth/password/reset`, {
+      const response = await fetch(`${PORTAL_API_BASE}/auth/password/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: password }),
@@ -54,7 +67,8 @@ function ResetPasswordForm() {
       if (!response.ok) throw new Error(payload?.detail || 'No pudimos actualizar la contrasena.');
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos actualizar la contrasena.');
+      const message = err instanceof Error ? err.message : 'No pudimos actualizar la contrasena.';
+      setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);
     } finally {
       setLoading(false);
     }
@@ -82,11 +96,14 @@ function ResetPasswordForm() {
             <label className="block text-sm">
               Nueva contrasena
               <div className="relative mt-1">
-                <input required type={showPassword ? 'text' : 'password'} minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 pr-12 text-sm outline-none transition focus:border-cyan-300" />
+                <input required type={showPassword ? 'text' : 'password'} minLength={10} value={password} onChange={(event) => { setPassword(event.target.value); if (error) setError(null); }} className="w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 pr-12 text-sm outline-none transition focus:border-cyan-300" />
                 <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400" aria-label={showPassword ? 'Ocultar contrasena' : 'Ver contrasena'}>
                   <EyeIcon off={showPassword} />
                 </button>
               </div>
+              <p className="mt-2 text-xs leading-5 text-zinc-400">
+                Debe tener al menos 10 caracteres e incluir letras y números.
+              </p>
             </label>
             <label className="block text-sm">
               Confirmar contrasena

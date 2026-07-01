@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
+const PORTAL_API_BASE = '/api/portal';
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const PORTAL_VIDEO_URL = process.env.NEXT_PUBLIC_LEAD_PORTAL_VIDEO_URL || '';
 const TOKEN_KEY = 'lead_portal_token';
@@ -79,6 +79,14 @@ function contextFromQuery(query: Record<string, string>) {
 function buildModeHref(mode: Mode, query: Record<string, string>) {
   const params = new URLSearchParams(query);
   return `/perfil-lead/${mode === 'login' ? 'login' : 'registro'}?${params.toString()}`;
+}
+
+function passwordPolicyMessage(value: string): string | null {
+  const password = String(value || '');
+  if (password.length < 10) return 'Usá al menos 10 caracteres.';
+  if (!/[A-Za-z]/.test(password)) return 'Incluí al menos una letra.';
+  if (!/\d/.test(password)) return 'Incluí al menos un número.';
+  return null;
 }
 
 function EyeIcon({ off = false }: { off?: boolean }) {
@@ -262,7 +270,7 @@ export default function LeadPortalAuthClient({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/portal/auth/google-login-from-landing`, {
+      const response = await fetch(`${PORTAL_API_BASE}/auth/google-login-from-landing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...context, id_token: idToken, page_url: window.location.href }),
@@ -271,7 +279,8 @@ export default function LeadPortalAuthClient({
       if (!response.ok) throw new Error(payload?.detail || 'No pudimos iniciar sesion con Google.');
       persistAndRedirect(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos iniciar sesion con Google.');
+      const message = err instanceof Error ? err.message : 'No pudimos iniciar sesion con Google.';
+      setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);
     } finally {
       setLoading(false);
     }
@@ -282,7 +291,7 @@ export default function LeadPortalAuthClient({
     setError(null);
     setNotice(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/portal/auth/password/forgot`, {
+      const response = await fetch(`${PORTAL_API_BASE}/auth/password/forgot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -291,7 +300,8 @@ export default function LeadPortalAuthClient({
       if (!response.ok) throw new Error(payload?.detail || 'No pudimos enviar el enlace.');
       setNotice(payload?.message || 'Si el email existe, te enviamos un enlace para restablecer la contraseña.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos enviar el enlace.');
+      const message = err instanceof Error ? err.message : 'No pudimos enviar el enlace.';
+      setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);
     } finally {
       setLoading(false);
     }
@@ -310,6 +320,11 @@ export default function LeadPortalAuthClient({
     if (isSignup && signupStep !== 'preferences') {
       if (signupStep === 'identity') setSignupStep('account');
       if (signupStep === 'account') {
+        const policyError = passwordPolicyMessage(password);
+        if (policyError) {
+          setError(policyError);
+          return;
+        }
         if (password !== confirmPassword) {
           setError('Las contraseñas no coinciden.');
           return;
@@ -317,6 +332,13 @@ export default function LeadPortalAuthClient({
         setSignupStep('preferences');
       }
       return;
+    }
+    if (isSignup) {
+      const policyError = passwordPolicyMessage(password);
+      if (policyError) {
+        setError(policyError);
+        return;
+      }
     }
     if (isSignup && password !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
@@ -327,8 +349,8 @@ export default function LeadPortalAuthClient({
     try {
       const endpoint =
         activeMode === 'login'
-          ? `${BACKEND_URL}/api/portal/auth/login-from-landing`
-          : `${BACKEND_URL}/api/portal/auth/signup-from-landing`;
+          ? `${PORTAL_API_BASE}/auth/login-from-landing`
+          : `${PORTAL_API_BASE}/auth/signup-from-landing`;
       const body =
         activeMode === 'login'
           ? { ...context, email: email.trim().toLowerCase(), password, page_url: window.location.href }
@@ -351,7 +373,8 @@ export default function LeadPortalAuthClient({
       if (!response.ok) throw new Error(payload?.detail || 'No pudimos completar la operacion.');
       persistAndRedirect(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos completar la operacion.');
+      const message = err instanceof Error ? err.message : 'No pudimos completar la operacion.';
+      setError(message === 'Failed to fetch' ? 'No pudimos conectar con el servidor. Probá de nuevo en unos segundos.' : message);
     } finally {
       setLoading(false);
     }
@@ -396,7 +419,10 @@ export default function LeadPortalAuthClient({
           type={showPassword ? 'text' : 'password'}
           minLength={10}
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            if (error) setError(null);
+          }}
           autoComplete={activeMode === 'login' ? 'current-password' : 'new-password'}
           className={`w-full rounded-2xl border px-3 py-3 pr-12 text-sm outline-none transition ${inputClass}`}
         />
@@ -409,6 +435,11 @@ export default function LeadPortalAuthClient({
           <EyeIcon off={showPassword} />
         </button>
       </div>
+      {activeMode === 'signup' && (
+        <p className={`mt-2 text-xs leading-5 ${subtleClass}`}>
+          Debe tener al menos 10 caracteres e incluir letras y números.
+        </p>
+      )}
     </label>
   );
 
