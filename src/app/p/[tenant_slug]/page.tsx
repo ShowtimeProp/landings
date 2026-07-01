@@ -186,6 +186,18 @@ function normalizeTheme(raw: string | null | undefined): PortfolioTheme {
   return 'dark';
 }
 
+function nextTheme(theme: PortfolioTheme): PortfolioTheme {
+  if (theme === 'dark') return 'soft';
+  if (theme === 'soft') return 'light';
+  return 'dark';
+}
+
+function themeLabel(theme: PortfolioTheme): string {
+  if (theme === 'light') return 'Tema claro';
+  if (theme === 'soft') return 'Tema suave';
+  return 'Tema oscuro';
+}
+
 function ThemeIcon({ theme, className = 'h-4 w-4' }: { theme: PortfolioTheme; className?: string }) {
   if (theme === 'light') {
     return (
@@ -425,9 +437,6 @@ export default async function PortfolioPage({
     : isSoft
     ? 'border-white/10 bg-slate-950/40'
     : 'border-white/10 bg-black/30';
-  const headerBadgeClass = isLight
-    ? 'border-zinc-200 bg-zinc-100 text-zinc-700'
-    : 'border-white/20 bg-white/5 text-zinc-200';
   const heroClass = isLight
     ? 'border-zinc-200 bg-gradient-to-br from-white via-zinc-100 to-zinc-200 shadow-[0_20px_50px_rgba(15,23,42,0.12)]'
     : isSoft
@@ -470,6 +479,8 @@ export default async function PortfolioPage({
   }
   const portalLoginHref = `/perfil-lead/login?${portalParams.toString()}`;
   const portalSignupHref = `/perfil-lead/registro?${portalParams.toString()}`;
+  const nextPortfolioTheme = nextTheme(theme);
+  const nextPortfolioThemeLabel = themeLabel(nextPortfolioTheme);
   const hasPortfolioMap = Boolean(tenant.map?.enabled && tenant.map.publicToken?.startsWith('pk.'));
   const portfolioMap = hasPortfolioMap && tenant.map ? (
     <PortfolioMapLoader
@@ -558,37 +569,16 @@ export default async function PortfolioPage({
           </div>
 
           <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
-            <nav
-              className={`flex items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
-                isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
+            <Link
+              href={themeHref(nextPortfolioTheme)}
+              aria-label={`Cambiar a ${nextPortfolioThemeLabel.toLowerCase()}`}
+              title={nextPortfolioThemeLabel}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                isLight ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white' : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10'
               }`}
-              aria-label="Estilo visual"
             >
-              <Link
-                href={themeHref('light')}
-                aria-label="Tema claro"
-                title="Tema claro"
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'light' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
-              >
-                <ThemeIcon theme="light" />
-              </Link>
-              <Link
-                href={themeHref('soft')}
-                aria-label="Tema suave"
-                title="Tema suave"
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'soft' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
-              >
-                <ThemeIcon theme="soft" />
-              </Link>
-              <Link
-                href={themeHref('dark')}
-                aria-label="Tema oscuro"
-                title="Tema oscuro"
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${theme === 'dark' ? 'bg-white text-zinc-800 shadow-sm' : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`}
-              >
-                <ThemeIcon theme="dark" />
-              </Link>
-            </nav>
+              <ThemeIcon theme={nextPortfolioTheme} className="h-5 w-5" />
+            </Link>
 
             <nav
               className={`flex items-center gap-1 rounded-full p-1 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px] ${
@@ -609,9 +599,6 @@ export default async function PortfolioPage({
                 Registrarme
               </Link>
             </nav>
-            <span className={`hidden rounded-full border px-3 py-1 text-xs lg:inline-flex ${headerBadgeClass}`}>
-              {properties.length} propiedades
-            </span>
           </div>
         </div>
       </header>
