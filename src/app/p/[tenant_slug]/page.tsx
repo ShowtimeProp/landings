@@ -322,11 +322,15 @@ function pickPortfolioImage(data: ApiResponse): string | null {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant_slug: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }): Promise<Metadata> {
   const { tenant_slug } = await params;
-  const data = await fetchPortfolio(tenant_slug);
+  const resolvedSearchParams = await searchParams;
+  const referralCode = normalizeReferralCode(resolvedSearchParams.ref);
+  const data = await fetchPortfolio(tenant_slug, referralCode);
   if (!data) {
     return { title: 'Portfolio no encontrado | ShowtimeProp' };
   }
@@ -336,8 +340,10 @@ export async function generateMetadata({
     data.tenant.name;
   const agencyName = String(data.tenant.tenant_name || '').trim() || data.tenant.name;
   const title = `${advisorName} | ${agencyName}`;
-  const description = `Te invito a ver nuestro portfolio de propiedades!\nTe atendemos las 24/7 los 365 dias del año 👍`;
+  const siteName = 'Atendemos las 24/7 los 365 dias del año 👍';
+  const description = `Te invito a ver nuestro portfolio de propiedades! ${siteName}`;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}`;
+  const ogUrl = referralCode ? `${canonicalUrl}?ref=${encodeURIComponent(referralCode)}` : canonicalUrl;
   const ogImage = pickPortfolioImage(data);
 
   return {
@@ -349,8 +355,9 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
+      siteName,
       type: 'website',
-      url: canonicalUrl,
+      url: ogUrl,
       images: ogImage
         ? [
             {
