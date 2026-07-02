@@ -64,19 +64,40 @@ type HomePayload = {
     past: Appointment[];
     counts?: Record<string, number>;
   };
-  search_profiles: {
-    id: string;
-    tenant_id: string;
-    summary?: string | null;
-    operation_type?: string | null;
-    property_type?: string | null;
-    locations?: string[];
-    is_active?: boolean;
-  }[];
+  search_profiles: SearchProfile[];
   documentation: {
     status: string;
     message: string;
   };
+};
+
+type MatchHistoryItem = {
+  landing_token: string;
+  landing_url: string;
+  properties_count: number;
+  click_count: number;
+  sent_at?: string | null;
+  viewed_at?: string | null;
+  updated_at?: string | null;
+};
+
+type SearchProfile = {
+  id: string;
+  tenant_id: string;
+  summary?: string | null;
+  operation_type?: string | null;
+  property_type?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  bedrooms_min?: number | null;
+  bathrooms_min?: number | null;
+  locations?: string[];
+  allow_cross_tenant?: boolean;
+  desired_matches_per_batch?: number | null;
+  notification_interval_hours?: number | null;
+  is_active?: boolean;
+  created_at?: string | null;
+  history?: MatchHistoryItem[];
 };
 
 function getToken(): string {
@@ -122,12 +143,36 @@ function appointmentLabel(item: Appointment): string {
 function operationLabel(value?: string | null): string {
   const map: Record<string, string> = {
     sale: 'Comprar',
+    venta: 'Comprar',
     rent: 'Alquilar',
     rent_short_term: 'Alquiler temporario',
     rent_long_term: 'Alquiler largo plazo',
     both: 'Comprar o alquilar',
   };
   return value ? map[value] || value : 'Sin operación';
+}
+
+function propertyTypeLabel(value?: string | null): string {
+  const map: Record<string, string> = {
+    apartment: 'Departamento',
+    house: 'Casa',
+    ph: 'PH',
+    land: 'Terreno',
+    local: 'Local',
+    commercial: 'Comercial',
+    office: 'Oficina',
+    garage: 'Cochera',
+    project: 'Proyecto',
+    other: 'Otro',
+  };
+  return value ? map[value] || value : 'Tipo abierto';
+}
+
+function fmtDateTime(value?: string | null): string {
+  if (!value) return 'Sin fecha';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function favoriteTitle(favorite: Favorite): string {
@@ -164,6 +209,20 @@ function tomorrowISO(): string {
   return date.toISOString().slice(0, 10);
 }
 
+function parseFavoriteFeedback(notes?: string | null): { visited: boolean; comment: string } {
+  const text = String(notes || '').trim();
+  if (!text) return { visited: false, comment: '' };
+  const visited = /Visitada:\s*Si|Visitada:\s*Sí/i.test(text);
+  const match = text.match(/Comentario:\s*([\s\S]*)$/i);
+  return { visited, comment: (match?.[1] || text).trim() };
+}
+
+function buildFavoriteFeedbackNotes(visited: boolean, comment: string): string {
+  const cleanComment = String(comment || '').trim();
+  if (!visited && !cleanComment) return '';
+  return `Visitada: ${visited ? 'Sí' : 'No'}${cleanComment ? `\nComentario: ${cleanComment}` : ''}`;
+}
+
 export default function LeadPortalPanelClient() {
   const [home, setHome] = useState<HomePayload | null>(null);
   const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
@@ -174,7 +233,16 @@ export default function LeadPortalPanelClient() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileEdit, setProfileEdit] = useState({ full_name: '', phone: '' });
   const [visitFavoriteId, setVisitFavoriteId] = useState<string | null>(null);
+  const [feedbackFavoriteId, setFeedbackFavoriteId] = useState<string | null>(null);
   const [savingVisit, setSavingVisit] = useState(false);
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(null);
+  const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
+  const [editingSearchProfileId, setEditingSearchProfileId] = useState<string | null>(null);
+  const [favoriteFeedback, setFavoriteFeedback] = useState({
+    visited: false,
+    comment: '',
+  });
   const [visitForm, setVisitForm] = useState({
     scheduled_date: tomorrowISO(),
     scheduled_time: '15:00',
@@ -183,10 +251,14 @@ export default function LeadPortalPanelClient() {
   });
   const [profileForm, setProfileForm] = useState({
     operation_type: 'sale',
-    property_type: '',
+    property_type: 'apartment',
     price_min: '',
     price_max: '',
+    bedrooms_min: '',
+    bathrooms_min: '',
     locations: '',
+    desired_matches_per_batch: '10',
+    notification_interval_hours: '24',
     summary: '',
   });
   const primaryTenantId = useMemo(() => {
@@ -278,6 +350,97 @@ export default function LeadPortalPanelClient() {
     }
   };
 
+  const removeFavorite = async (favorite: Favorite) => {
+    if (!window.confirm('¿Quitar esta propiedad de Mis Favoritos?')) return;
+    setRemovingFavoriteId(favorite.id);
+    setError(null);
+    try {
+      await apiFetch(`/api/portal/favorites/${encodeURIComponent(favorite.id)}`, {
+        method: 'DELETE',
+      });
+      if (visitFavoriteId === favorite.id) setVisitFavoriteId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos quitar el favorito.');
+    } finally {
+      setRemovingFavoriteId(null);
+    }
+  };
+
+  const openFavoriteFeedback = (favorite: Favorite) => {
+    const parsed = parseFavoriteFeedback(favorite.notes);
+    setFavoriteFeedback(parsed);
+    setFeedbackFavoriteId(feedbackFavoriteId === favorite.id ? null : favorite.id);
+  };
+
+  const saveFavoriteFeedback = async (favorite: Favorite) => {
+    setSavingFeedback(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/portal/favorites/${encodeURIComponent(favorite.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          notes: buildFavoriteFeedbackNotes(favoriteFeedback.visited, favoriteFeedback.comment),
+        }),
+      });
+      setFeedbackFavoriteId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos guardar el comentario.');
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  const resetSearchProfileForm = () => {
+    setEditingSearchProfileId(null);
+    setProfileForm({
+      operation_type: 'sale',
+      property_type: 'apartment',
+      price_min: '',
+      price_max: '',
+      bedrooms_min: '',
+      bathrooms_min: '',
+      locations: '',
+      desired_matches_per_batch: '10',
+      notification_interval_hours: '24',
+      summary: '',
+    });
+  };
+
+  const editSearchProfile = (profile: SearchProfile) => {
+    setEditingSearchProfileId(profile.id);
+    setProfileForm({
+      operation_type: profile.operation_type || 'sale',
+      property_type: profile.property_type || 'apartment',
+      price_min: profile.price_min != null ? String(profile.price_min) : '',
+      price_max: profile.price_max != null ? String(profile.price_max) : '',
+      bedrooms_min: profile.bedrooms_min != null ? String(profile.bedrooms_min) : '',
+      bathrooms_min: profile.bathrooms_min != null ? String(profile.bathrooms_min) : '',
+      locations: (profile.locations || []).join(', '),
+      desired_matches_per_batch: profile.desired_matches_per_batch != null ? String(profile.desired_matches_per_batch) : '10',
+      notification_interval_hours: profile.notification_interval_hours != null ? String(profile.notification_interval_hours) : '24',
+      summary: profile.summary || '',
+    });
+  };
+
+  const deleteSearchProfile = async (profile: SearchProfile) => {
+    if (!window.confirm('¿Desactivar esta alerta de búsqueda?')) return;
+    setDeletingProfileId(profile.id);
+    setError(null);
+    try {
+      await apiFetch(`/api/portal/buyer/search-profiles/${encodeURIComponent(profile.id)}`, {
+        method: 'DELETE',
+      });
+      if (editingSearchProfileId === profile.id) resetSearchProfileForm();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos desactivar la alerta.');
+    } finally {
+      setDeletingProfileId(null);
+    }
+  };
+
   const createSearchProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!primaryTenantId) {
@@ -287,25 +450,32 @@ export default function LeadPortalPanelClient() {
     setSavingProfile(true);
     setError(null);
     try {
-      await apiFetch('/api/portal/buyer/search-profiles', {
-        method: 'POST',
+      const path = editingSearchProfileId
+        ? `/api/portal/buyer/search-profiles/${encodeURIComponent(editingSearchProfileId)}`
+        : '/api/portal/buyer/search-profiles';
+      await apiFetch(path, {
+        method: editingSearchProfileId ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          tenant_id: primaryTenantId,
+          ...(editingSearchProfileId ? {} : { tenant_id: primaryTenantId }),
           preference_mode: 'notify',
           operation_type: profileForm.operation_type || undefined,
           property_type: profileForm.property_type || undefined,
           price_min: profileForm.price_min ? Number(profileForm.price_min) : undefined,
           price_max: profileForm.price_max ? Number(profileForm.price_max) : undefined,
+          bedrooms_min: profileForm.bedrooms_min ? Number(profileForm.bedrooms_min) : undefined,
+          bathrooms_min: profileForm.bathrooms_min ? Number(profileForm.bathrooms_min) : undefined,
           locations: profileForm.locations
             .split(',')
             .map((item) => item.trim())
             .filter(Boolean),
           summary: profileForm.summary || undefined,
           allow_cross_tenant: true,
-          desired_matches_per_batch: 10,
+          desired_matches_per_batch: profileForm.desired_matches_per_batch ? Number(profileForm.desired_matches_per_batch) : 10,
+          notification_interval_hours: profileForm.notification_interval_hours ? Number(profileForm.notification_interval_hours) : 24,
+          is_active: true,
         }),
       });
-      setProfileForm({ operation_type: 'sale', property_type: '', price_min: '', price_max: '', locations: '', summary: '' });
+      resetSearchProfileForm();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos crear la alerta.');
@@ -372,13 +542,13 @@ export default function LeadPortalPanelClient() {
         )}
 
         <section className="grid gap-4 md:grid-cols-3">
-          <GuideCard title="Favoritos" text="Usá el corazón de cualquier propiedad para armar tu lista corta y comparar mejor." />
-          <GuideCard title="Citas" text="Acá ves si tus visitas están activas, canceladas o vencidas, y los links virtuales cuando existan." />
-          <GuideCard title="Alertas" text="Definí tu criterio de búsqueda para que el sistema te acerque mejores matches." />
+          <GuideCard icon={<HeartIcon />} title="Favoritos" text="Usá el corazón de cualquier propiedad para armar tu lista corta y comparar mejor." />
+          <GuideCard icon={<CalendarIcon />} title="Visitas" text="Acá ves si tus visitas están activas, canceladas o vencidas, y los links virtuales cuando existan." />
+          <GuideCard icon={<SirenIcon />} title="Alertas" text="Definí tu criterio de búsqueda para que el sistema te acerque mejores matches." />
         </section>
 
         <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <PanelCard title={`Mis Favoritos (${home?.favorites.length || 0})`}>
+          <PanelCard title={`Mis Favoritos (${home?.favorites.length || 0})`} icon={<HeartIcon />}>
             {!home?.favorites.length ? (
               <EmptyText>Guardá propiedades desde el corazón de cada card.</EmptyText>
             ) : (
@@ -387,8 +557,11 @@ export default function LeadPortalPanelClient() {
                   const image = firstImage(favorite);
                   const href = favoriteHref(favorite);
                   const isVisitOpen = visitFavoriteId === favorite.id;
+                  const isFeedbackOpen = feedbackFavoriteId === favorite.id;
+                  const parsedFeedback = parseFavoriteFeedback(favorite.notes);
                   return (
                     <article key={favorite.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                      <div className="relative">
                       <a href={href} target="_blank" rel="noreferrer" className={href === '#' ? 'pointer-events-none' : 'block'}>
                         {image ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -397,9 +570,29 @@ export default function LeadPortalPanelClient() {
                           <div className="flex h-36 items-center justify-center bg-zinc-900 text-sm text-zinc-500">Sin imagen</div>
                         )}
                       </a>
+                        <button
+                          type="button"
+                          onClick={() => void removeFavorite(favorite)}
+                          disabled={removingFavoriteId === favorite.id}
+                          className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/55 text-zinc-100 shadow-lg backdrop-blur transition hover:bg-red-500 hover:text-white disabled:opacity-60"
+                          aria-label="Quitar de favoritos"
+                          title="Quitar de favoritos"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v5M14 11v5" />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="p-3">
                         <h3 className="line-clamp-2 font-semibold">{favoriteTitle(favorite)}</h3>
-                        {favorite.notes && <p className="mt-2 text-xs text-zinc-400">{favorite.notes}</p>}
+                        {favorite.notes && (
+                          <p className="mt-2 whitespace-pre-line rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs text-zinc-400">
+                            {favorite.notes}
+                          </p>
+                        )}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {href !== '#' && (
                             <a href={href} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10">
@@ -412,9 +605,16 @@ export default function LeadPortalPanelClient() {
                               onClick={() => setVisitFavoriteId(isVisitOpen ? null : favorite.id)}
                               className="rounded-lg bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-cyan-300"
                             >
-                              Crear Visita
+                              Agendar Visita
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => openFavoriteFeedback(favorite)}
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10"
+                          >
+                            {parsedFeedback.visited ? 'Editar visita' : 'Marcar visitada'}
+                          </button>
                         </div>
                         {isVisitOpen && (
                           <form
@@ -457,6 +657,34 @@ export default function LeadPortalPanelClient() {
                             />
                             <button disabled={savingVisit} className="w-full rounded-lg bg-cyan-300 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-60">
                               {savingVisit ? 'Creando...' : 'Confirmar visita'}
+                            </button>
+                          </form>
+                        )}
+                        {isFeedbackOpen && (
+                          <form
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              void saveFavoriteFeedback(favorite);
+                            }}
+                            className="mt-3 space-y-2 rounded-xl border border-white/10 bg-white/[0.04] p-3"
+                          >
+                            <label className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
+                              <input
+                                type="checkbox"
+                                checked={favoriteFeedback.visited}
+                                onChange={(event) => setFavoriteFeedback((prev) => ({ ...prev, visited: event.target.checked }))}
+                                className="h-4 w-4 rounded border-white/20 bg-black/30 accent-cyan-300"
+                              />
+                              Ya visité esta propiedad
+                            </label>
+                            <textarea
+                              value={favoriteFeedback.comment}
+                              onChange={(event) => setFavoriteFeedback((prev) => ({ ...prev, comment: event.target.value }))}
+                              placeholder="Qué te gustó, qué no, dudas para revisar..."
+                              className="min-h-20 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs outline-none focus:border-cyan-300"
+                            />
+                            <button disabled={savingFeedback} className="w-full rounded-lg bg-cyan-300 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-60">
+                              {savingFeedback ? 'Guardando...' : 'Guardar comentario'}
                             </button>
                           </form>
                         )}
@@ -514,30 +742,57 @@ export default function LeadPortalPanelClient() {
           </PanelCard>
         </section>
 
-        <PanelCard title="Agenda de citas">
+        <PanelCard title="Agenda de Visitas" icon={<CalendarIcon />}>
           <AppointmentGroup title="Activas" items={home?.appointments.upcoming || []} />
           <AppointmentGroup title="Canceladas" items={home?.appointments.cancelled || []} muted />
           <AppointmentGroup title="Vencidas o expiradas" items={home?.appointments.past || []} muted />
         </PanelCard>
 
         <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <PanelCard title="Crear alerta de match">
+          <PanelCard title={editingSearchProfileId ? 'Editar Alerta de Búsqueda' : 'Crear Alerta de Búsqueda'}>
             <form onSubmit={createSearchProfile} className="space-y-3">
-              <select
-                value={profileForm.operation_type}
-                onChange={(event) => setProfileForm((prev) => ({ ...prev, operation_type: event.target.value }))}
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
-              >
-                <option value="sale">Comprar</option>
-                <option value="rent">Alquilar</option>
-                <option value="both">Comprar o alquilar</option>
-              </select>
-              <input
-                value={profileForm.property_type}
-                onChange={(event) => setProfileForm((prev) => ({ ...prev, property_type: event.target.value }))}
-                placeholder="Tipo: apartment, house, ph..."
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
-              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="space-y-1 text-xs font-semibold text-zinc-300">
+                  Tipo de operación
+                  <select
+                    value={profileForm.operation_type}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, operation_type: event.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-normal outline-none focus:border-cyan-300"
+                  >
+                    <option value="sale">Venta</option>
+                    <option value="rent_long_term">Alquiler tradicional</option>
+                    <option value="rent_short_term">Alquiler vacacional</option>
+                    <option value="both">Múltiples operaciones</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs font-semibold text-zinc-300">
+                  Tipo de propiedad
+                  <select
+                    value={profileForm.property_type}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, property_type: event.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-normal outline-none focus:border-cyan-300"
+                  >
+                    <option value="apartment">Departamento</option>
+                    <option value="house">Casa</option>
+                    <option value="ph">PH</option>
+                    <option value="land">Terreno</option>
+                    <option value="local">Local</option>
+                    <option value="office">Oficina</option>
+                    <option value="garage">Cochera</option>
+                    <option value="project">Proyecto</option>
+                    <option value="other">Otro</option>
+                  </select>
+                </label>
+              </div>
+              <label className="space-y-1 text-xs font-semibold text-zinc-300">
+                Ubicaciones
+                <input
+                  value={profileForm.locations}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, locations: event.target.value }))}
+                  placeholder="Mar del Plata, Güemes, Centro"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-normal outline-none focus:border-cyan-300"
+                />
+              </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <input
                   value={profileForm.price_min}
@@ -554,12 +809,41 @@ export default function LeadPortalPanelClient() {
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
                 />
               </div>
-              <input
-                value={profileForm.locations}
-                onChange={(event) => setProfileForm((prev) => ({ ...prev, locations: event.target.value }))}
-                placeholder="Zonas separadas por coma"
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
-              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  value={profileForm.bedrooms_min}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, bedrooms_min: event.target.value }))}
+                  placeholder="Dormitorios mínimos"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+                <input
+                  value={profileForm.bathrooms_min}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, bathrooms_min: event.target.value }))}
+                  placeholder="Baños mínimos"
+                  inputMode="decimal"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  value={profileForm.desired_matches_per_batch}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, desired_matches_per_batch: event.target.value }))}
+                  placeholder="Matches por envío"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+                <input
+                  value={profileForm.notification_interval_hours}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, notification_interval_hours: event.target.value }))}
+                  placeholder="Intervalo aviso (hs)"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                />
+              </div>
+              <p className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-xs leading-5 text-cyan-50/80">
+                Cross-tenant se activa automáticamente cuando la inmobiliaria lo permite.
+              </p>
               <textarea
                 value={profileForm.summary}
                 onChange={(event) => setProfileForm((prev) => ({ ...prev, summary: event.target.value }))}
@@ -570,23 +854,85 @@ export default function LeadPortalPanelClient() {
                 disabled={savingProfile}
                 className="w-full rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-cyan-300 disabled:opacity-60"
               >
-                {savingProfile ? 'Guardando...' : 'Activar alerta'}
+                {savingProfile ? 'Guardando...' : editingSearchProfileId ? 'Guardar alerta' : 'Activar alerta'}
               </button>
+              {editingSearchProfileId && (
+                <button
+                  type="button"
+                  onClick={resetSearchProfileForm}
+                  className="w-full rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-white/10"
+                >
+                  Cancelar edición
+                </button>
+              )}
             </form>
           </PanelCard>
 
-          <PanelCard title={`Alertas activas (${home?.search_profiles.length || 0})`}>
-            {!home?.search_profiles.length ? (
+          <PanelCard title={`Alertas Activas (${home?.search_profiles.filter((profile) => profile.is_active !== false).length || 0})`} icon={<SirenIcon />}>
+            {!home?.search_profiles.filter((profile) => profile.is_active !== false).length ? (
               <EmptyText>Todavía no cargaste criterios. Creá una alerta para recibir mejores opciones.</EmptyText>
             ) : (
               <div className="space-y-3">
-                {home.search_profiles.map((profile) => (
+                {home.search_profiles.filter((profile) => profile.is_active !== false).map((profile) => (
                   <article key={profile.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                    <p className="font-semibold">{operationLabel(profile.operation_type)}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{operationLabel(profile.operation_type)}</p>
+                        <p className="mt-1 text-xs text-zinc-400">
+                          {(profile.locations || []).join(', ') || 'Sin zonas'} · {propertyTypeLabel(profile.property_type)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editSearchProfile(profile)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-200 hover:bg-white/10"
+                          aria-label="Editar alerta"
+                          title="Editar alerta"
+                        >
+                          <EditIcon />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteSearchProfile(profile)}
+                          disabled={deletingProfileId === profile.id}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-200 hover:bg-red-500 hover:text-white disabled:opacity-60"
+                          aria-label="Borrar alerta"
+                          title="Borrar alerta"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </div>
                     <p className="mt-1 text-xs text-zinc-400">
-                      {(profile.locations || []).join(', ') || 'Sin zonas'} · {profile.property_type || 'tipo abierto'}
+                      Precio {profile.price_min || '-'} / {profile.price_max || '-'} · D {profile.bedrooms_min || '-'} · B {profile.bathrooms_min || '-'}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {profile.desired_matches_per_batch || 10} matches por envío · cada {profile.notification_interval_hours || 24} hs ·{' '}
+                      {profile.allow_cross_tenant ? 'Cross-tenant' : 'Solo inmobiliaria'}
                     </p>
                     {profile.summary && <p className="mt-2 text-sm text-zinc-300">{profile.summary}</p>}
+                    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Historial de links</p>
+                      {!profile.history?.length ? (
+                        <p className="mt-2 text-xs text-zinc-500">Todavía no hay links enviados para esta alerta.</p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          {profile.history.slice(0, 4).map((item) => (
+                            <a
+                              key={item.landing_token}
+                              href={item.landing_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/10"
+                            >
+                              <span>{fmtDateTime(item.sent_at || item.updated_at)}</span>
+                              <span className="text-cyan-200">{item.properties_count} propiedades</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>
@@ -598,19 +944,68 @@ export default function LeadPortalPanelClient() {
   );
 }
 
-function PanelCard({ title, children }: { title: string; children: React.ReactNode }) {
+function PanelCard({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="flex items-center gap-2 text-lg font-semibold">
+        {icon && <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">{icon}</span>}
+        {title}
+      </h2>
       <div className="mt-3">{children}</div>
     </section>
   );
 }
 
-function GuideCard({ title, text }: { title: string; text: string }) {
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20.8 4.6c-1.8-1.8-4.7-1.8-6.5 0L12 6.9 9.7 4.6c-1.8-1.8-4.7-1.8-6.5 0s-1.8 4.7 0 6.5L12 20l8.8-8.9c1.8-1.8 1.8-4.7 0-6.5Z" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M8 2v4M16 2v4M3 10h18" />
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+    </svg>
+  );
+}
+
+function SirenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M7 18v-6a5 5 0 0 1 10 0v6" />
+      <path d="M5 18h14M4 22h16M12 2v3M4.2 5.2l2.1 2.1M19.8 5.2l-2.1 2.1" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
+    </svg>
+  );
+}
+
+function GuideCard({ title, text, icon }: { title: string; text: string; icon?: React.ReactNode }) {
   return (
     <article className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
-      <h2 className="text-sm font-semibold text-cyan-100">{title}</h2>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-cyan-100">
+        {icon && <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-200/20 bg-black/20">{icon}</span>}
+        {title}
+      </h2>
       <p className="mt-2 text-xs leading-5 text-cyan-50/80">{text}</p>
     </article>
   );
