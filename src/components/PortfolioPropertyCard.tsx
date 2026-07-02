@@ -7,6 +7,7 @@ import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
 const PORTAL_API_BASE = '/api/portal';
 const TOKEN_KEY = 'lead_portal_token';
 const AUTH_EVENT = 'lead-portal-auth-changed';
+const FAVORITES_EVENT = 'lead-portal-favorites-changed';
 
 type PortfolioTheme = 'dark' | 'soft' | 'light';
 
@@ -32,6 +33,91 @@ type PropertyItem = {
   tour_virtual_url?: string | null;
   images?: unknown[];
 };
+
+type PortalFavorite = {
+  property_id?: string | null;
+  public_property_id?: string | null;
+  external_listing_id?: string | null;
+  source_landing_token?: string | null;
+  listing_snapshot?: Record<string, unknown> | null;
+};
+
+const favoriteIdsCache: {
+  token: string | null;
+  ids: Set<string>;
+  promise: Promise<Set<string>> | null;
+} = {
+  token: null,
+  ids: new Set(),
+  promise: null,
+};
+
+function addFavoriteId(ids: Set<string>, value: unknown) {
+  if (typeof value !== 'string') return;
+  const clean = value.trim();
+  if (clean) ids.add(clean);
+}
+
+function favoriteRowsToIds(rows: PortalFavorite[]): Set<string> {
+  const ids = new Set<string>();
+  rows.forEach((favorite) => {
+    addFavoriteId(ids, favorite.property_id);
+    addFavoriteId(ids, favorite.public_property_id);
+    addFavoriteId(ids, favorite.external_listing_id);
+    if (favorite.source_landing_token?.startsWith('public:')) {
+      const [, , propertyId] = favorite.source_landing_token.split(':');
+      addFavoriteId(ids, propertyId);
+    }
+    const snapshot = favorite.listing_snapshot || {};
+    addFavoriteId(ids, snapshot.id);
+    addFavoriteId(ids, snapshot.property_id);
+    addFavoriteId(ids, snapshot.public_property_id);
+  });
+  return ids;
+}
+
+async function loadFavoriteIds(token: string): Promise<Set<string>> {
+  if (favoriteIdsCache.token !== token) {
+    favoriteIdsCache.token = token;
+    favoriteIdsCache.ids = new Set();
+    favoriteIdsCache.promise = null;
+  }
+  if (favoriteIdsCache.promise) return favoriteIdsCache.promise;
+
+  favoriteIdsCache.promise = fetch(`${PORTAL_API_BASE}/favorites`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+    .then(async (response) => {
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.dispatchEvent(new Event(AUTH_EVENT));
+        return new Set<string>();
+      }
+      if (!response.ok) return favoriteIdsCache.ids;
+      const data = (await response.json()) as { favorites?: PortalFavorite[] };
+      const ids = favoriteRowsToIds(data.favorites || []);
+      favoriteIdsCache.ids = ids;
+      return ids;
+    })
+    .finally(() => {
+      favoriteIdsCache.promise = null;
+    });
+
+  return favoriteIdsCache.promise;
+}
+
+function rememberFavorite(token: string, propertyId: string, favorite?: PortalFavorite | null) {
+  if (favoriteIdsCache.token !== token) {
+    favoriteIdsCache.token = token;
+    favoriteIdsCache.ids = new Set();
+    favoriteIdsCache.promise = null;
+  }
+  favoriteIdsCache.ids.add(propertyId);
+  if (favorite) {
+    favoriteRowsToIds([favorite]).forEach((id) => favoriteIdsCache.ids.add(id));
+  }
+}
 
 function getImageUrl(image: unknown): string | null {
   if (typeof image === 'string') return image;
@@ -137,17 +223,37 @@ export default function PortfolioPropertyCard({
   const hasTourPreview = Boolean(tourUrl);
 
   useEffect(() => {
+    let cancelled = false;
+    const hydrateFavoriteState = (token: string | null) => {
+      if (!token) {
+        setFavoriteSaved(false);
+        return;
+      }
+      void loadFavoriteIds(token)
+        .then((ids) => {
+          if (!cancelled) setFavoriteSaved(ids.has(item.id));
+        })
+        .catch(() => {
+          if (!cancelled) setFavoriteSaved(false);
+        });
+    };
+
     const syncSession = () => {
-      setHasPortalSession(Boolean(window.localStorage.getItem(TOKEN_KEY)));
+      const token = window.localStorage.getItem(TOKEN_KEY);
+      setHasPortalSession(Boolean(token));
+      hydrateFavoriteState(token);
     };
     syncSession();
     window.addEventListener(AUTH_EVENT, syncSession);
     window.addEventListener('storage', syncSession);
+    window.addEventListener(FAVORITES_EVENT, syncSession);
     return () => {
+      cancelled = true;
       window.removeEventListener(AUTH_EVENT, syncSession);
       window.removeEventListener('storage', syncSession);
+      window.removeEventListener(FAVORITES_EVENT, syncSession);
     };
-  }, []);
+  }, [item.id]);
 
   const safeImageIndex = imageList.length ? Math.min(imageIndex, imageList.length - 1) : 0;
   const currentImage = imageList[safeImageIndex] || null;
@@ -233,7 +339,10 @@ export default function PortfolioPropertyCard({
         return;
       }
       if (!response.ok) throw new Error('No pudimos guardar el favorito.');
+      const data = (await response.json().catch(() => null)) as { favorite?: PortalFavorite } | null;
+      rememberFavorite(token, item.id, data?.favorite || null);
       setFavoriteSaved(true);
+      window.dispatchEvent(new CustomEvent(FAVORITES_EVENT, { detail: { propertyId: item.id } }));
     } catch {
       setShowFavoriteAuth(true);
     } finally {
@@ -352,7 +461,14 @@ export default function PortfolioPropertyCard({
           theme={isLight ? 'light' : 'dark'}
           onClose={() => setShowFavoriteAuth(false)}
           onAuthenticated={(payload) => {
-            if (payload.favorite) setFavoriteSaved(true);
+            if (payload.favorite) {
+              const token = window.localStorage.getItem(TOKEN_KEY);
+              if (token) {
+                rememberFavorite(token, item.id, payload.favorite as PortalFavorite);
+                window.dispatchEvent(new CustomEvent(FAVORITES_EVENT, { detail: { propertyId: item.id } }));
+              }
+              setFavoriteSaved(true);
+            }
             setShowFavoriteAuth(false);
           }}
         />

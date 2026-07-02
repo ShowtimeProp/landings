@@ -113,6 +113,7 @@ function getToken(): string {
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(`${BACKEND_URL}${path}`, {
+    cache: 'no-store',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -364,7 +365,7 @@ export default function LeadPortalPanelClient() {
     setSavingProfileEdit(true);
     setError(null);
     try {
-      await apiFetch('/api/portal/me', {
+      const updated = await apiFetch<{ account: HomePayload['account'] }>('/api/portal/me', {
         method: 'PATCH',
         body: JSON.stringify({
           first_name: profileEdit.first_name || '',
@@ -376,8 +377,19 @@ export default function LeadPortalPanelClient() {
           operation_type: profileEdit.operation_type || '',
         }),
       });
+      if (updated.account) {
+        setHome((prev) => (prev ? { ...prev, account: updated.account } : prev));
+        const splitName = splitFullName(updated.account.full_name);
+        setProfileEdit({
+          first_name: updated.account.first_name || splitName.first_name,
+          last_name: updated.account.last_name || splitName.last_name,
+          email: updated.account.email || '',
+          phone: updated.account.phone || '',
+          birth_date: updated.account.birth_date || '',
+          operation_type: updated.account.operation_type || '',
+        });
+      }
       setEditingProfile(false);
-      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos actualizar tu perfil.');
     } finally {
