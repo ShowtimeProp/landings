@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const TOKEN_KEY = 'lead_portal_token';
+const ACCOUNT_KEY = 'lead_portal_account';
+const SESSION_EXPIRED_MESSAGE = 'Tu sesión ha expirado por seguridad, ingresá nuevamente.';
 
 type Favorite = {
   id: string;
@@ -53,8 +54,12 @@ type MergeCandidate = {
 type HomePayload = {
   account: {
     email: string;
+    first_name?: string | null;
+    last_name?: string | null;
     full_name?: string | null;
     phone?: string | null;
+    birth_date?: string | null;
+    operation_type?: string | null;
   };
   tenant_links: TenantLink[];
   favorites: Favorite[];
@@ -117,6 +122,14 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.localStorage.removeItem(ACCOUNT_KEY);
+        window.dispatchEvent(new Event('lead-portal-auth-changed'));
+      }
+      throw new Error(SESSION_EXPIRED_MESSAGE);
+    }
     throw new Error(payload?.detail || 'No pudimos cargar tu panel.');
   }
   return payload as T;
@@ -144,12 +157,27 @@ function operationLabel(value?: string | null): string {
   const map: Record<string, string> = {
     sale: 'Comprar',
     venta: 'Comprar',
+    buy: 'Comprar',
+    comprar: 'Comprar',
+    sell: 'Vender',
+    vender: 'Vender',
     rent: 'Alquilar',
+    alquilar: 'Alquilar',
+    rent_out: 'Dar en alquiler',
+    dar_en_alquiler: 'Dar en alquiler',
     rent_short_term: 'Alquiler temporario',
     rent_long_term: 'Alquiler largo plazo',
     both: 'Comprar o alquilar',
+    multiple: 'Múltiples operaciones',
+    multiples_operaciones: 'Múltiples operaciones',
   };
   return value ? map[value] || value : 'Sin operación';
+}
+
+function splitFullName(value?: string | null): { first_name: string; last_name: string } {
+  const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { first_name: '', last_name: '' };
+  return { first_name: parts[0] || '', last_name: parts.slice(1).join(' ') };
 }
 
 function propertyTypeLabel(value?: string | null): string {
@@ -226,12 +254,20 @@ function buildFavoriteFeedbackNotes(visited: boolean, comment: string): string {
 export default function LeadPortalPanelClient() {
   const [home, setHome] = useState<HomePayload | null>(null);
   const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
+  const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingProfileEdit, setSavingProfileEdit] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileEdit, setProfileEdit] = useState({ full_name: '', phone: '' });
+  const [profileEdit, setProfileEdit] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    birth_date: '',
+    operation_type: '',
+  });
   const [visitFavoriteId, setVisitFavoriteId] = useState<string | null>(null);
   const [feedbackFavoriteId, setFeedbackFavoriteId] = useState<string | null>(null);
   const [savingVisit, setSavingVisit] = useState(false);
@@ -264,6 +300,12 @@ export default function LeadPortalPanelClient() {
   const primaryTenantId = useMemo(() => {
     return home?.tenant_links?.[0]?.tenant_id || home?.favorites?.[0]?.tenant_id || home?.appointments?.upcoming?.[0]?.['tenant_id'] || '';
   }, [home]);
+  const isLight = panelTheme === 'light';
+
+  useEffect(() => {
+    const theme = new URLSearchParams(window.location.search).get('theme');
+    setPanelTheme(theme === 'light' ? 'light' : 'dark');
+  }, []);
 
   const load = async () => {
     const token = getToken();
@@ -276,9 +318,14 @@ export default function LeadPortalPanelClient() {
     try {
       const data = await apiFetch<HomePayload>('/api/portal/buyer/home');
       setHome(data);
+      const splitName = splitFullName(data.account.full_name);
       setProfileEdit({
-        full_name: data.account.full_name || '',
+        first_name: data.account.first_name || splitName.first_name,
+        last_name: data.account.last_name || splitName.last_name,
+        email: data.account.email || '',
         phone: data.account.phone || '',
+        birth_date: data.account.birth_date || '',
+        operation_type: data.account.operation_type || '',
       });
       const candidates = await apiFetch<{ candidates: MergeCandidate[] }>('/api/portal/buyer/merge-candidates');
       setMergeCandidates(candidates.candidates || []);
@@ -295,6 +342,7 @@ export default function LeadPortalPanelClient() {
 
   const logout = () => {
     window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(ACCOUNT_KEY);
     window.location.href = '/';
   };
 
@@ -319,8 +367,13 @@ export default function LeadPortalPanelClient() {
       await apiFetch('/api/portal/me', {
         method: 'PATCH',
         body: JSON.stringify({
-          full_name: profileEdit.full_name || undefined,
+          first_name: profileEdit.first_name || '',
+          last_name: profileEdit.last_name || '',
+          full_name: [profileEdit.first_name, profileEdit.last_name].map((item) => item.trim()).filter(Boolean).join(' ') || undefined,
+          email: profileEdit.email || undefined,
           phone: profileEdit.phone || undefined,
+          birth_date: profileEdit.birth_date || '',
+          operation_type: profileEdit.operation_type || '',
         }),
       });
       setEditingProfile(false);
@@ -486,24 +539,22 @@ export default function LeadPortalPanelClient() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-100">
+      <main className={`lead-portal-panel lead-portal-panel--${panelTheme} flex min-h-screen items-center justify-center ${isLight ? 'bg-zinc-50 text-zinc-950' : 'bg-zinc-950 text-zinc-100'}`}>
+        <PanelThemeStyles />
         <p className="text-sm text-zinc-300">Cargando tu panel...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-6 text-zinc-100">
+    <main className={`lead-portal-panel lead-portal-panel--${panelTheme} min-h-screen px-4 py-6 ${isLight ? 'bg-zinc-50 text-zinc-950' : 'bg-zinc-950 text-zinc-100'}`}>
+      <PanelThemeStyles />
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+        <header className="panel-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Mi búsqueda</p>
             <h1 className="mt-1 text-2xl font-semibold">Hola {home?.account.full_name || home?.account.email}</h1>
           </div>
           <div className="flex gap-2">
-            <Link href="/" className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
-              Ver portfolios
-            </Link>
             <button onClick={logout} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
               Salir
             </button>
@@ -710,26 +761,66 @@ export default function LeadPortalPanelClient() {
               </div>
               {editingProfile ? (
                 <form onSubmit={saveProfile} className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      value={profileEdit.first_name}
+                      onChange={(event) => setProfileEdit((prev) => ({ ...prev, first_name: event.target.value }))}
+                      placeholder="Nombre"
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                    />
+                    <input
+                      value={profileEdit.last_name}
+                      onChange={(event) => setProfileEdit((prev) => ({ ...prev, last_name: event.target.value }))}
+                      placeholder="Apellido"
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                    />
+                  </div>
                   <input
-                    value={profileEdit.full_name}
-                    onChange={(event) => setProfileEdit((prev) => ({ ...prev, full_name: event.target.value }))}
-                    placeholder="Nombre completo"
+                    type="email"
+                    value={profileEdit.email}
+                    onChange={(event) => setProfileEdit((prev) => ({ ...prev, email: event.target.value }))}
+                    placeholder="Email"
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
                   />
                   <input
                     value={profileEdit.phone}
                     onChange={(event) => setProfileEdit((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="WhatsApp"
+                    placeholder="Teléfono"
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
                   />
+                  <label className="block space-y-1 text-xs font-semibold text-zinc-300">
+                    Fecha de nacimiento
+                    <input
+                      type="date"
+                      value={profileEdit.birth_date}
+                      onChange={(event) => setProfileEdit((prev) => ({ ...prev, birth_date: event.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-normal outline-none focus:border-cyan-300"
+                    />
+                  </label>
+                  <select
+                    value={profileEdit.operation_type}
+                    onChange={(event) => setProfileEdit((prev) => ({ ...prev, operation_type: event.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-300"
+                  >
+                    <option value="">Tipo de operación</option>
+                    <option value="buy">Comprar</option>
+                    <option value="sell">Vender</option>
+                    <option value="rent">Alquilar</option>
+                    <option value="rent_out">Dar en Alquiler</option>
+                    <option value="multiple">Múltiples Operaciones</option>
+                  </select>
                   <button disabled={savingProfileEdit} className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-cyan-300 disabled:opacity-60">
                     {savingProfileEdit ? 'Guardando...' : 'Guardar cambios'}
                   </button>
                 </form>
               ) : (
                 <>
+                  <p>Nombre: {home?.account.first_name || splitFullName(home?.account.full_name).first_name || 'Pendiente'}</p>
+                  <p>Apellido: {home?.account.last_name || splitFullName(home?.account.full_name).last_name || 'Pendiente'}</p>
                   <p>Email: {home?.account.email}</p>
-                  <p>WhatsApp: {home?.account.phone || 'Pendiente'}</p>
+                  <p>Teléfono: {home?.account.phone || 'Pendiente'}</p>
+                  <p>Fecha de nacimiento: {home?.account.birth_date || 'Pendiente'}</p>
+                  <p>Tipo de operación: {operationLabel(home?.account.operation_type)}</p>
                 </>
               )}
               <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
@@ -759,7 +850,7 @@ export default function LeadPortalPanelClient() {
                     onChange={(event) => setProfileForm((prev) => ({ ...prev, operation_type: event.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-normal outline-none focus:border-cyan-300"
                   >
-                    <option value="sale">Venta</option>
+                    <option value="sale">Comprar</option>
                     <option value="rent_long_term">Alquiler tradicional</option>
                     <option value="rent_short_term">Alquiler vacacional</option>
                     <option value="both">Múltiples operaciones</option>
@@ -944,9 +1035,86 @@ export default function LeadPortalPanelClient() {
   );
 }
 
+function PanelThemeStyles() {
+  return (
+    <style jsx global>{`
+      .lead-portal-panel select option {
+        background: #09090b;
+        color: #f4f4f5;
+      }
+
+      .lead-portal-panel select:focus,
+      .lead-portal-panel input:focus,
+      .lead-portal-panel textarea:focus {
+        outline: none;
+        border-color: #22d3ee;
+        box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22);
+      }
+
+      .lead-portal-panel--light {
+        background: #f8fafc;
+        color: #18181b;
+      }
+
+      .lead-portal-panel--light .panel-card {
+        background: #ffffff;
+        border-color: #e4e4e7;
+        color: #18181b;
+      }
+
+      .lead-portal-panel--light .guide-card {
+        background: #ecfeff;
+        border-color: rgba(8, 145, 178, 0.24);
+        color: #164e63;
+      }
+
+      .lead-portal-panel--light .panel-empty {
+        background: #f8fafc;
+        border-color: #e4e4e7;
+        color: #71717a;
+      }
+
+      .lead-portal-panel--light input,
+      .lead-portal-panel--light select,
+      .lead-portal-panel--light textarea {
+        background: #ffffff !important;
+        border-color: #d4d4d8 !important;
+        color: #18181b !important;
+      }
+
+      .lead-portal-panel--light select option {
+        background: #ffffff;
+        color: #18181b;
+      }
+
+      .lead-portal-panel--light input::placeholder,
+      .lead-portal-panel--light textarea::placeholder {
+        color: #71717a;
+      }
+
+      .lead-portal-panel--light .text-zinc-100,
+      .lead-portal-panel--light .text-zinc-200,
+      .lead-portal-panel--light .text-zinc-300 {
+        color: #27272a;
+      }
+
+      .lead-portal-panel--light .text-zinc-400,
+      .lead-portal-panel--light .text-zinc-500 {
+        color: #71717a;
+      }
+
+      .lead-portal-panel--light .bg-black\\/20,
+      .lead-portal-panel--light .bg-black\\/25,
+      .lead-portal-panel--light .bg-black\\/30 {
+        background: #ffffff;
+      }
+    `}</style>
+  );
+}
+
 function PanelCard({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+    <section className="panel-card rounded-2xl border border-white/10 bg-white/[0.05] p-4">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
         {icon && <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">{icon}</span>}
         {title}
@@ -1001,7 +1169,7 @@ function TrashIcon() {
 
 function GuideCard({ title, text, icon }: { title: string; text: string; icon?: React.ReactNode }) {
   return (
-    <article className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
+    <article className="guide-card rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-cyan-100">
         {icon && <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-200/20 bg-black/20">{icon}</span>}
         {title}
@@ -1012,7 +1180,7 @@ function GuideCard({ title, text, icon }: { title: string; text: string; icon?: 
 }
 
 function EmptyText({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">{children}</p>;
+  return <p className="panel-empty rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">{children}</p>;
 }
 
 function AppointmentGroup({ title, items, muted = false }: { title: string; items: Appointment[]; muted?: boolean }) {

@@ -110,11 +110,10 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
       {profileOpen && mounted
         ? createPortal(
             <div className="fixed inset-0 flex items-center justify-center bg-black/70 px-3 py-4 backdrop-blur-sm sm:px-5" style={{ zIndex: 2147483647, isolation: 'isolate' }}>
-              <div className={`flex h-[min(92vh,860px)] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border shadow-2xl ${isLight ? 'border-zinc-200 bg-white' : 'border-white/10 bg-zinc-950'}`}>
+              <div className={`flex h-[min(92vh,860px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border shadow-2xl ${isLight ? 'border-zinc-200 bg-white' : 'border-white/10 bg-zinc-950'}`}>
                 <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${isLight ? 'border-zinc-200 text-zinc-950' : 'border-white/10 text-zinc-100'}`}>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">Panel personal</p>
-                    <h2 className="text-lg font-semibold">{accountLabel || 'Mi Perfil'}</h2>
+                    <h2 className="text-lg font-semibold">Mi Perfil</h2>
                   </div>
                   <button
                     type="button"
@@ -127,7 +126,7 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
                     </svg>
                   </button>
                 </div>
-                <iframe src="/perfil-lead/panel" title="Mi Perfil" className="min-h-0 flex-1 border-0" />
+                <iframe src={`/perfil-lead/panel?theme=${isLight ? 'light' : 'dark'}`} title="Mi Perfil" className="min-h-0 flex-1 border-0" />
               </div>
             </div>,
             document.body
