@@ -120,6 +120,12 @@ type PlaceReviewsResponse = {
   };
 };
 
+type PublicBlogSummary = {
+  blog_enabled: boolean;
+  show_blog_link?: boolean;
+  articles?: Array<{ id: string; slug: string }>;
+};
+
 type PortfolioTheme = 'dark' | 'soft' | 'light';
 const LEGAL_DISCLAIMER =
   '📄 Disclaimer Showtime Prop no ejerce el corretaje inmobiliario. El presente sitio web es una plataforma tecnológica de marketing inmobiliario donde inmobiliarias, desarrolladoras y agentes independientes pueden promocionar propiedades y gestionar consultas mediante herramientas digitales y sistemas basados en inteligencia artificial. Cada cliente es de propiedad y gestión independiente, por lo que Showtime Prop: no interviene en los datos de las publicaciones, no participa en operaciones inmobiliarias, no interviene en la negociación, reserva, boleto de compraventa, escritura ni contratos de alquiler. En cumplimiento de la normativa vigente, todas las operaciones inmobiliarias son realizadas exclusivamente por el corredor público inmobiliario matriculado responsable de cada propiedad, cuyos datos deben ser consultados directamente. La información publicada (incluyendo medidas, características, precios, expensas, servicios e impuestos) es provista por terceros, pudiendo estar sujeta a modificaciones y tener carácter orientativo.';
@@ -175,6 +181,16 @@ async function fetchPlaceReviews(tenantSlug: string): Promise<PlaceReviewsRespon
   const data = (await res.json()) as PlaceReviewsResponse;
   if (!data || typeof data !== 'object') return null;
   return data;
+}
+
+async function fetchPublicBlogSummary(tenantSlug: string, referralCode?: string | null): Promise<PublicBlogSummary | null> {
+  const params = new URLSearchParams();
+  if (referralCode) params.set('ref', referralCode);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const url = `${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog${suffix}`;
+  const res = await fetch(url, { next: { revalidate: 120 } });
+  if (!res.ok) return null;
+  return (await res.json()) as PublicBlogSummary;
 }
 
 function normalizeLabel(raw: string | null | undefined, dictionary: Record<string, string>): string | null {
@@ -398,12 +414,17 @@ export default async function PortfolioPage({
   const referralCode = normalizeReferralCode(refParam);
   const data = await fetchPortfolio(tenant_slug, referralCode);
   if (!data) notFound();
-  const placeReviews = await fetchPlaceReviews(tenant_slug);
+  const [placeReviews, blogSummary] = await Promise.all([
+    fetchPlaceReviews(tenant_slug),
+    fetchPublicBlogSummary(tenant_slug, referralCode),
+  ]);
 
   const { tenant, properties } = data;
   const campaignQueryString = buildCampaignQueryString(resolvedSearchParams, referralCode);
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, campaignQueryString);
+  const showBlogLink = Boolean(blogSummary?.blog_enabled && blogSummary.show_blog_link && (blogSummary.articles || []).length > 0);
+  const blogHref = `/p/${tenant.slug}/blog${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ''}`;
   const contactName =
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
@@ -600,6 +621,16 @@ export default async function PortfolioPage({
             </Link>
 
             <LeadPortalAuthLauncher query={portalQuery} isLight={isLight} />
+            {showBlogLink ? (
+              <Link
+                href={blogHref}
+                className={`inline-flex min-h-10 items-center rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                  isLight ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white' : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10'
+                }`}
+              >
+                Blog
+              </Link>
+            ) : null}
           </div>
         </div>
       </header>
@@ -672,6 +703,13 @@ export default async function PortfolioPage({
                   }
                 />
                 <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="justify-center pt-1 lg:justify-start" />
+                {showBlogLink ? (
+                  <div className="flex justify-center pt-1 lg:justify-start">
+                    <Link href={blogHref} className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition ${emailButtonClass}`}>
+                      Blog Inmobiliario
+                    </Link>
+                  </div>
+                ) : null}
               </div>
               {vcardUrl && (
                 <a
