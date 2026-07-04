@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BlogLeadForm from '@/components/BlogLeadForm';
+import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -205,6 +206,18 @@ export default async function BlogArticlePage({
   const portfolioHref = `/p/${tenant.slug}?${blogQuery(theme, referralCode, campaignQueryString)}`;
   const blogHref = `/p/${tenant.slug}/blog?${blogQuery(theme, referralCode, campaignQueryString)}`;
   const blogThemeHref = `/p/${tenant.slug}/blog/${article.slug}?${blogQuery(nextBlogTheme, referralCode, campaignQueryString)}`;
+  const portalParams = new URLSearchParams({
+    tenant_slug: tenant.slug,
+    next: '/perfil-lead/panel',
+  });
+  if (referralCode) portalParams.set('ref', referralCode);
+  if (campaignQueryString) {
+    const campaignParams = new URLSearchParams(campaignQueryString);
+    campaignParams.forEach((value, key) => {
+      if (key !== 'theme') portalParams.set(key, value);
+    });
+  }
+  const portalQuery = Object.fromEntries(portalParams.entries());
 
   return (
     <main className={`min-h-screen ${rootClass}`}>
@@ -220,10 +233,11 @@ export default async function BlogArticlePage({
               <span className="block truncate text-sm font-semibold">{tenantName}</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href={blogThemeHref} aria-label={`Cambiar a ${themeLabel(nextBlogTheme).toLowerCase()}`} title={themeLabel(nextBlogTheme)} className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${pillClass}`}>
               <ThemeIcon theme={nextBlogTheme} className="h-5 w-5" />
             </Link>
+            <LeadPortalAuthLauncher query={portalQuery} isLight={isLight} />
             <Link href={portfolioHref} className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${pillClass}`}>
               Volver al Portfolio
             </Link>

@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -156,6 +157,16 @@ export default async function TenantBlogPage({
   const pillClass = isLight ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white' : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10';
   const portfolioHref = `/p/${tenant.slug}?${blogQuery(theme, referralCode, resolvedSearch)}`;
   const blogThemeHref = `/p/${tenant.slug}/blog?${blogQuery(nextBlogTheme, referralCode, resolvedSearch)}`;
+  const portalParams = new URLSearchParams({
+    tenant_slug: tenant.slug,
+    next: '/perfil-lead/panel',
+  });
+  if (referralCode) portalParams.set('ref', referralCode);
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'gbraid', 'wbraid']) {
+    const value = String(resolvedSearch[key] || '').trim();
+    if (value) portalParams.set(key, value);
+  }
+  const portalQuery = Object.fromEntries(portalParams.entries());
 
   return (
     <main className={`min-h-screen ${rootClass}`}>
@@ -170,10 +181,11 @@ export default async function TenantBlogPage({
               <span className="block truncate text-sm font-semibold">{tenantName}</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href={blogThemeHref} aria-label={`Cambiar a ${themeLabel(nextBlogTheme).toLowerCase()}`} title={themeLabel(nextBlogTheme)} className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${pillClass}`}>
               <ThemeIcon theme={nextBlogTheme} className="h-5 w-5" />
             </Link>
+            <LeadPortalAuthLauncher query={portalQuery} isLight={isLight} />
             <Link href={portfolioHref} className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${pillClass}`}>
               Volver al Portfolio
             </Link>
@@ -191,8 +203,7 @@ export default async function TenantBlogPage({
             <p className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{contactName}</p>
           </div>
         </div>
-        <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isLight ? 'text-cyan-700' : 'text-zinc-400'}`}>{tenantName}</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">Blog Inmobiliario</h1>
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">Blog Inmobiliario</h1>
         <p className={`mt-4 max-w-2xl text-lg leading-8 ${mutedClass}`}>
           Guías, tendencias y oportunidades del mercado, curadas para tomar mejores decisiones inmobiliarias.
         </p>

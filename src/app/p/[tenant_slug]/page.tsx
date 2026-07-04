@@ -710,13 +710,6 @@ export default async function PortfolioPage({
                   }
                 />
                 <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="justify-center pt-1 lg:justify-start" />
-                {showBlogLink ? (
-                  <div className="flex justify-center pt-1 lg:justify-start">
-                    <Link href={blogHref} className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition ${emailButtonClass}`}>
-                      Blog Inmobiliario
-                    </Link>
-                  </div>
-                ) : null}
               </div>
               {vcardUrl && (
                 <a
