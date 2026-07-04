@@ -424,7 +424,6 @@ export default async function PortfolioPage({
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, campaignQueryString);
   const showBlogLink = Boolean(blogSummary?.blog_enabled && blogSummary.show_blog_link && (blogSummary.articles || []).length > 0);
-  const blogHref = `/p/${tenant.slug}/blog${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ''}`;
   const contactName =
     String(tenant.realtor_name || '').trim() ||
     String(tenant.tenant_name || '').trim() ||
@@ -507,6 +506,14 @@ export default async function PortfolioPage({
     }
     return `/p/${tenant.slug}?${params.toString()}`;
   };
+  const blogParams = new URLSearchParams({ theme });
+  if (campaignQueryString) {
+    const campaignParams = new URLSearchParams(campaignQueryString);
+    campaignParams.forEach((value, key) => {
+      if (key !== 'theme') blogParams.set(key, value);
+    });
+  }
+  const blogHref = `/p/${tenant.slug}/blog?${blogParams.toString()}`;
   const portalParams = new URLSearchParams({
     tenant_slug: tenant.slug,
     next: '/perfil-lead/panel',
@@ -624,11 +631,11 @@ export default async function PortfolioPage({
             {showBlogLink ? (
               <Link
                 href={blogHref}
-                className={`inline-flex min-h-10 items-center rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                className={`inline-flex h-10 items-center rounded-full border px-3 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
                   isLight ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white' : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10'
                 }`}
               >
-                Blog
+                Blog Inmobiliario
               </Link>
             ) : null}
           </div>

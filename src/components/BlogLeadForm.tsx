@@ -21,6 +21,7 @@ type Props = {
   referralCode?: string | null;
   contentFormat?: string | null;
   campaignQueryString?: string;
+  theme?: 'dark' | 'soft' | 'light';
 };
 
 function normalizeWhatsapp(raw: string): string {
@@ -40,6 +41,7 @@ export default function BlogLeadForm({
   referralCode,
   contentFormat,
   campaignQueryString,
+  theme = 'light',
 }: Props) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -58,6 +60,14 @@ export default function BlogLeadForm({
     }
     return out;
   }, [campaignQueryString]);
+  const isLight = theme === 'light';
+  const labelClass = isLight ? 'text-zinc-700' : 'text-zinc-200';
+  const fieldClass = isLight
+    ? 'border-zinc-200 bg-white text-zinc-950 placeholder:text-zinc-400 focus:border-zinc-900'
+    : 'border-white/10 bg-black/25 text-zinc-100 placeholder:text-zinc-500 focus:border-[#f4c400]';
+  const buttonClass = isLight
+    ? 'bg-zinc-950 text-white hover:bg-zinc-800'
+    : 'bg-[#f4c400] text-zinc-950 hover:bg-[#ffd84a]';
 
   async function submit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -108,25 +118,25 @@ export default function BlogLeadForm({
     <form onSubmit={submit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
-          <span className="font-medium text-zinc-700">Nombre</span>
-          <input className="w-full rounded-lg border border-zinc-200 px-3 py-2 outline-none focus:border-zinc-900" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <span className={`font-medium ${labelClass}`}>Nombre</span>
+          <input className={`w-full rounded-lg border px-3 py-2 outline-none ${fieldClass}`} value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="font-medium text-zinc-700">WhatsApp</span>
-          <input className="w-full rounded-lg border border-zinc-200 px-3 py-2 outline-none focus:border-zinc-900" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+          <span className={`font-medium ${labelClass}`}>WhatsApp</span>
+          <input className={`w-full rounded-lg border px-3 py-2 outline-none ${fieldClass}`} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
         </label>
       </div>
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-zinc-700">Email</span>
-        <input type="email" className="w-full rounded-lg border border-zinc-200 px-3 py-2 outline-none focus:border-zinc-900" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <span className={`font-medium ${labelClass}`}>Email</span>
+        <input type="email" className={`w-full rounded-lg border px-3 py-2 outline-none ${fieldClass}`} value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-zinc-700">Mensaje</span>
-        <textarea className="min-h-24 w-full rounded-lg border border-zinc-200 px-3 py-2 outline-none focus:border-zinc-900" value={message} onChange={(e) => setMessage(e.target.value)} />
+        <span className={`font-medium ${labelClass}`}>Mensaje</span>
+        <textarea className={`min-h-24 w-full rounded-lg border px-3 py-2 outline-none ${fieldClass}`} value={message} onChange={(e) => setMessage(e.target.value)} />
       </label>
       {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
       {success ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
-      <button type="submit" disabled={submitting} className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60">
+      <button type="submit" disabled={submitting} className={`w-full rounded-lg px-4 py-3 text-sm font-semibold transition disabled:opacity-60 ${buttonClass}`}>
         {submitting ? 'Enviando...' : 'Enviar consulta'}
       </button>
     </form>

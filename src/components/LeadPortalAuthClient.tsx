@@ -123,7 +123,7 @@ function Progress({ step }: { step: SignupStep }) {
       {steps.map((item, index) => (
         <span
           key={item}
-          className={`h-1.5 rounded-full transition ${index <= activeIndex ? 'bg-cyan-300' : 'bg-current opacity-15'}`}
+          className={`h-1.5 rounded-full transition ${index <= activeIndex ? 'bg-[#f4c400]' : 'bg-current opacity-15'}`}
         />
       ))}
     </div>
@@ -207,9 +207,13 @@ export default function LeadPortalAuthClient({
     ? 'border-zinc-200 bg-white/72 text-zinc-950 shadow-zinc-900/10'
     : 'border-white/10 bg-white/[0.06] text-zinc-100 shadow-black/35';
   const inputClass = isLight
-    ? 'border-zinc-200 bg-white/70 text-zinc-950 placeholder:text-zinc-400 focus:border-cyan-500'
-    : 'border-white/10 bg-black/30 text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-300';
+    ? 'border-zinc-200 bg-white/70 text-zinc-950 placeholder:text-zinc-400 focus:border-amber-500'
+    : 'border-white/10 bg-black/30 text-zinc-100 placeholder:text-zinc-500 focus:border-[#f4c400]';
   const subtleClass = isLight ? 'text-zinc-600' : 'text-zinc-400';
+  const accentTextClass = isLight ? 'text-amber-600 hover:text-amber-700' : 'text-[#f4c400] hover:text-[#ffd84a]';
+  const primaryButtonClass = isLight
+    ? 'border-zinc-900 bg-zinc-950 text-white shadow-[0_16px_36px_rgba(15,23,42,0.16)] hover:bg-zinc-800'
+    : 'border-[#ffe27a]/70 bg-[#f4c400] text-zinc-950 shadow-[0_16px_36px_rgba(244,196,0,0.22)] hover:bg-[#ffd84a]';
   const pillClass = isLight
     ? 'rounded-full border border-white/70 bg-white/45 text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_20px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:bg-white/75'
     : 'rounded-full border border-white/12 bg-white/8 text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl transition hover:bg-white/14';
@@ -423,12 +427,12 @@ export default function LeadPortalAuthClient({
     if (signupStep === 'preferences') setSignupStep('account');
   };
 
-  const formTitle = authView === 'forgot' ? 'Recuperar contraseña' : activeMode === 'login' ? 'Volver a mi panel' : 'Crear mi perfil gratis';
+  const formTitle = authView === 'forgot' ? 'Recuperar contraseña' : activeMode === 'login' ? 'Iniciar Sesión' : 'Registrate Acá';
   const formSubtitle =
     authView === 'forgot'
       ? 'Te enviamos un enlace seguro para definir una nueva contraseña.'
       : activeMode === 'login'
-      ? 'Ingresa con tu email o Google si ya registraste tus datos.'
+      ? 'Ingresá con tu email o Google si ya registraste tus datos.'
       : signupStep === 'identity'
       ? 'Herramientas, info e IA para acompañarte y que no se te pase nada.'
       : signupStep === 'account'
@@ -472,8 +476,8 @@ export default function LeadPortalAuthClient({
     <section className={`rounded-[1.75rem] border p-5 shadow-2xl backdrop-blur-2xl sm:p-6 ${panelClass}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
-            {authView === 'forgot' ? 'Acceso' : activeMode === 'login' ? 'Ingresar' : 'Registro gratuito'}
+          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${accentTextClass}`}>
+            {authView === 'forgot' ? 'Acceso' : activeMode === 'login' ? 'Iniciar Sesión' : 'Registrate Acá'}
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{formTitle}</h1>
           <p className={`mt-2 text-sm leading-6 ${subtleClass}`}>{formSubtitle}</p>
@@ -555,14 +559,14 @@ export default function LeadPortalAuthClient({
               </svg>
             </button>
           )}
-          <button type="submit" disabled={loading} className="h-12 flex-1 rounded-full border border-cyan-200/60 bg-cyan-300/90 px-5 text-sm font-semibold text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_16px_36px_rgba(34,211,238,0.24)] backdrop-blur-xl transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">
-            {loading ? 'Procesando...' : authView === 'forgot' ? 'Enviar enlace' : activeMode === 'login' ? 'Ingresar' : signupStep === 'preferences' ? 'Crear mi panel' : 'Continuar'}
+          <button type="submit" disabled={loading} className={`h-12 flex-1 rounded-full border px-5 text-sm font-semibold backdrop-blur-xl transition disabled:cursor-not-allowed disabled:opacity-60 ${primaryButtonClass}`}>
+            {loading ? 'Procesando...' : authView === 'forgot' ? 'Enviar enlace' : activeMode === 'login' ? 'Iniciar Sesión' : signupStep === 'preferences' ? 'Crear mi panel' : 'Continuar'}
           </button>
         </div>
       </form>
 
       {activeMode === 'login' && authView === 'auth' && (
-        <button type="button" onClick={() => { setAuthView('forgot'); setError(null); setNotice(null); }} className="mt-3 text-sm font-semibold text-cyan-400 transition hover:text-cyan-300">
+        <button type="button" onClick={() => { setAuthView('forgot'); setError(null); setNotice(null); }} className={`mt-3 text-sm font-semibold transition ${accentTextClass}`}>
           Olvide mi contrasena
         </button>
       )}
@@ -582,12 +586,12 @@ export default function LeadPortalAuthClient({
         <p className={`mt-5 text-center text-sm ${subtleClass}`}>
           {activeMode === 'login' ? 'Todavia no tenes panel?' : 'Ya tenes panel?'}{' '}
           {isModal ? (
-            <button type="button" onClick={() => switchMode(activeMode === 'login' ? 'signup' : 'login')} className="font-semibold text-cyan-400 transition hover:text-cyan-300">
-              {activeMode === 'login' ? 'Registrarme' : 'Ingresar'}
+            <button type="button" onClick={() => switchMode(activeMode === 'login' ? 'signup' : 'login')} className={`font-semibold transition ${accentTextClass}`}>
+              {activeMode === 'login' ? 'Registrate Acá' : 'Iniciar Sesión'}
             </button>
           ) : (
-            <Link href={alternateHref} className="font-semibold text-cyan-400 transition hover:text-cyan-300">
-              {activeMode === 'login' ? 'Registrarme' : 'Ingresar'}
+            <Link href={alternateHref} className={`font-semibold transition ${accentTextClass}`}>
+              {activeMode === 'login' ? 'Registrate Acá' : 'Iniciar Sesión'}
             </Link>
           )}
         </p>
@@ -599,7 +603,7 @@ export default function LeadPortalAuthClient({
     <div className={isModal ? 'grid items-center gap-5 lg:grid-cols-[minmax(260px,0.9fr)_420px]' : 'mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl items-center gap-6 lg:grid-cols-[minmax(260px,0.9fr)_420px]'}>
       <div className={isModal ? 'hidden lg:flex lg:justify-center' : 'flex flex-col items-center gap-5'}>
         {!isModal && (
-          <Link href="/" className="inline-flex text-sm font-semibold text-cyan-400 hover:text-cyan-300">
+          <Link href="/" className={`inline-flex text-sm font-semibold ${accentTextClass}`}>
             ShowtimeProp
           </Link>
         )}

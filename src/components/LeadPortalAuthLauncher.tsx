@@ -22,6 +22,7 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const syncSession = () => {
       const token = window.localStorage.getItem(TOKEN_KEY);
@@ -53,6 +54,9 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
     isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/15 bg-white/5'
   }`;
   const ghostButtonClass = `rounded-full px-2.5 py-1 transition ${isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'}`;
+  const solidButtonClass = `rounded-full px-2.5 py-1 shadow-sm transition ${
+    isLight ? 'bg-zinc-950 text-white hover:bg-zinc-800' : 'bg-[#f4c400] text-zinc-950 hover:bg-[#ffd52e]'
+  }`;
 
   return (
     <>
@@ -80,14 +84,14 @@ export default function LeadPortalAuthLauncher({ query, isLight = false }: Props
               onClick={() => setMode('login')}
               className={ghostButtonClass}
             >
-              Ingresar
+              Iniciar Sesión
             </button>
             <button
               type="button"
               onClick={() => setMode('signup')}
-              className="rounded-full bg-white px-2.5 py-1 text-zinc-800 shadow-sm transition hover:bg-zinc-100"
+              className={solidButtonClass}
             >
-              Registrarme
+              Registrate Acá
             </button>
           </>
         )}
