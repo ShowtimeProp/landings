@@ -252,15 +252,6 @@ export default async function BlogArticlePage({
               <img src={article.hero_image_url} alt={article.title} className="absolute inset-0 h-full w-full object-cover opacity-72" />
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/10" />
               <div className="relative mx-auto flex min-h-[420px] max-w-5xl flex-col justify-end px-4 py-10 sm:px-6">
-                <div className="mb-6 flex items-center gap-4">
-                  <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-white/10">
-                    {tenant.profile_photo_url ? <img src={tenant.profile_photo_url} alt={contactName} className="h-full w-full object-cover" /> : contactName.charAt(0)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4c400]">Asesor inmobiliario</p>
-                    <p className="truncate text-xl font-semibold">{contactName}</p>
-                  </div>
-                </div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">{article.target_audience}</p>
                 <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">{article.title}</h1>
                 <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-200">{article.excerpt}</p>
@@ -268,15 +259,6 @@ export default async function BlogArticlePage({
             </div>
           ) : (
             <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
-              <div className="mb-6 flex items-center gap-4">
-                <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-white/10">
-                  {tenant.profile_photo_url ? <img src={tenant.profile_photo_url} alt={contactName} className="h-full w-full object-cover" /> : contactName.charAt(0)}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4c400]">Asesor inmobiliario</p>
-                  <p className="truncate text-xl font-semibold">{contactName}</p>
-                </div>
-              </div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">{article.target_audience}</p>
               <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">{article.title}</h1>
               <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-200">{article.excerpt}</p>
