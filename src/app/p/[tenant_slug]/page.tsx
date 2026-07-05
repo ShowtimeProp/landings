@@ -7,6 +7,7 @@ import PortfolioPropertyCard from '@/components/PortfolioPropertyCard';
 import PortfolioTrackingBridge from '@/components/PortfolioTrackingBridge';
 import PortfolioContactActions from '@/components/PortfolioContactActions';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
+import PortfolioMapListBridge from '@/components/PortfolioMapListBridge';
 import ShareRail from '@/components/ShareRail';
 import TenantGtm from '@/components/TenantGtm';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
@@ -598,7 +599,7 @@ export default async function PortfolioPage({
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex min-w-0 items-center justify-center gap-3 sm:justify-start">
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+              className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full ${
                 isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
               }`}
             >
@@ -805,15 +806,9 @@ export default async function PortfolioPage({
         )}
 
         {portfolioMap ? (
-          <section id="portfolio-grid" className="relative left-1/2 mt-8 grid w-screen max-w-[100vw] -translate-x-1/2 gap-5 overflow-x-hidden px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(560px,0.95fr)] lg:items-start">
-            <div className="hidden lg:sticky lg:top-5 lg:block">{portfolioMap}</div>
-            <div
-              className="lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto lg:pr-1 [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {portfolioGrid}
-            </div>
-          </section>
+          <PortfolioMapListBridge map={portfolioMap} isLight={isLight}>
+            {portfolioGrid}
+          </PortfolioMapListBridge>
         ) : (
           <section id="portfolio-grid" className="mt-8">
             {portfolioGrid}

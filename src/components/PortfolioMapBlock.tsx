@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import {
+  PORTFOLIO_CARD_ACTIVE_EVENT,
+  PORTFOLIO_MARKER_SELECT_EVENT,
+  type PortfolioPropertyEventDetail,
+} from '@/components/portfolio-map-events';
 
 export type PortfolioTheme = 'dark' | 'soft' | 'light';
 
@@ -135,10 +140,24 @@ export default function PortfolioMapBlock({
       bounds.extend([p.lng, p.lat]);
     }
 
+    const markerEntries = new Map<
+      string,
+      {
+        wrap: HTMLDivElement;
+      }
+    >();
+
+    const setActiveMarker = (propertyId: string) => {
+      markerEntries.forEach((entry, id) => {
+        entry.wrap.classList.toggle('portfolio-map-marker-wrap--active', id === propertyId);
+      });
+    };
+
     for (const p of points) {
       const href = buildPropertyHref(tenantSlug, p, referralCode, campaignQueryString);
       const wrap = document.createElement('div');
       wrap.className = 'portfolio-map-marker-wrap';
+      wrap.dataset.propertyId = p.id;
       for (const cls of [
         'portfolio-map-sonar-ring',
         'portfolio-map-sonar-ring portfolio-map-sonar-ring--delay-1',
@@ -174,10 +193,20 @@ export default function PortfolioMapBlock({
           scrollGallery(1);
         });
       });
+      wrap.addEventListener('click', () => {
+        setActiveMarker(p.id);
+        window.dispatchEvent(
+          new CustomEvent<PortfolioPropertyEventDetail>(PORTFOLIO_MARKER_SELECT_EVENT, {
+            detail: { propertyId: p.id, source: 'map' },
+          })
+        );
+      });
+
       new mapboxgl.Marker({ element: wrap, anchor: 'center' })
         .setLngLat([p.lng, p.lat])
         .setPopup(popup)
         .addTo(map);
+      markerEntries.set(p.id, { wrap });
     }
 
     if (points.length > 1) {
@@ -185,11 +214,18 @@ export default function PortfolioMapBlock({
     }
 
     const onResize = () => map.resize();
+    const onCardActive = (event: Event) => {
+      const detail = (event as CustomEvent<PortfolioPropertyEventDetail>).detail;
+      if (!detail?.propertyId) return;
+      setActiveMarker(detail.propertyId);
+    };
     window.addEventListener('resize', onResize);
+    window.addEventListener(PORTFOLIO_CARD_ACTIVE_EVENT, onCardActive);
     const t = window.setTimeout(() => map.resize(), 200);
 
     return () => {
       window.removeEventListener('resize', onResize);
+      window.removeEventListener(PORTFOLIO_CARD_ACTIVE_EVENT, onCardActive);
       window.clearTimeout(t);
       map.remove();
     };

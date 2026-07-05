@@ -352,6 +352,7 @@ export default function PortfolioPropertyCard({
 
   return (
     <article
+      data-portfolio-card-id={item.id}
       className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1.5 ${cardClass}`}
     >
       <Link href={href} aria-label={`Ver detalle de ${item.name}`} className="absolute inset-0 z-10" />

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createElement } from 'react';
 import Script from 'next/script';
+import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
+import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import ShareRail from '@/components/ShareRail';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
@@ -10,6 +12,7 @@ import {
   CampaignParams,
   buildTrackedWhatsappUrl,
   campaignIdentityKey,
+  campaignParamsToQueryString,
   campaignParamsFromSearchParams,
   captureCurrentCampaignFromLocation,
 } from '@/lib/campaign-tracking';
@@ -17,6 +20,10 @@ import QRCode from 'qrcode';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const WIDGET_ASSET_VERSION = 'agent-orbs-v3-20260321';
+const PORTAL_API_BASE = '/api/portal';
+const TOKEN_KEY = 'lead_portal_token';
+const AUTH_EVENT = 'lead-portal-auth-changed';
+const FAVORITES_EVENT = 'lead-portal-favorites-changed';
 
 type Property = {
   id: string;
@@ -201,9 +208,12 @@ export function PropertyLandingClient({
   whatsappUrl: string;
 }) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
-  const [scrolled, setScrolled] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({});
+  const [showFavoriteAuth, setShowFavoriteAuth] = useState(false);
+  const [hasPortalSession, setHasPortalSession] = useState(false);
+  const [favoriteSaved, setFavoriteSaved] = useState(false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
   const [reviews, setReviews] = useState<{
     rating: number | null;
     reviews: { author_name?: string; rating?: number; text?: string; relative_time_description?: string }[];
@@ -222,22 +232,42 @@ export function PropertyLandingClient({
     return campaignParamsFromSearchParams(new URLSearchParams(window.location.search));
   });
   const trackedWhatsappUrl = buildTrackedWhatsappUrl(whatsappUrl, campaign);
+  const campaignQueryString = campaignParamsToQueryString(campaign);
+  const portfolioHref = (() => {
+    const qs = campaignQueryString.trim();
+    return qs ? `/p/${tenant.slug}?${qs}` : `/p/${tenant.slug}`;
+  })();
+  const favoriteParams = new URLSearchParams(campaignQueryString);
+  favoriteParams.set('tenant_slug', tenant.slug);
+  favoriteParams.set('property_id', property.id);
+  favoriteParams.set('next', '/perfil-lead/panel');
+  favoriteParams.delete('theme');
+  const favoriteQuery = Object.fromEntries(favoriteParams.entries());
   const isLight = themeMode === 'light';
   const isSoft = themeMode === 'soft';
   const isDark = themeMode === 'dark';
   const darkFamilyMode = !isLight;
+  const headerClass = isLight
+    ? 'border-zinc-200 bg-white/95 text-zinc-950 shadow-[0_12px_30px_rgba(15,23,42,0.08)]'
+    : isSoft
+    ? 'border-white/10 bg-slate-900/92 text-zinc-100 shadow-[0_16px_38px_rgba(2,6,23,0.34)]'
+    : 'border-white/10 bg-zinc-950/94 text-zinc-100 shadow-[0_16px_38px_rgba(0,0,0,0.44)]';
+  const pillClass = isLight
+    ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white'
+    : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10';
+  const favoriteButtonClass = favoriteSaved
+    ? isLight
+      ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+      : 'border-red-400/35 bg-red-500/15 text-red-200 hover:bg-red-500/20'
+    : isLight
+    ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white hover:text-red-600'
+    : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10 hover:text-red-200';
   const interactiveCardClass =
     themeMode === 'light'
       ? 'border-zinc-200 bg-zinc-50 shadow-[0_10px_26px_rgba(15,23,42,0.06)] hover:border-cyan-400/35 hover:shadow-[0_0_22px_rgba(56,189,248,0.20)]'
       : themeMode === 'soft'
       ? 'border-slate-500/55 bg-slate-800/55 shadow-[0_10px_28px_rgba(2,6,23,0.30)] hover:border-cyan-300/45 hover:shadow-[0_0_26px_rgba(34,211,238,0.22)]'
       : 'border-zinc-700/95 bg-zinc-900/55 shadow-[0_12px_34px_rgba(0,0,0,0.44)] hover:border-cyan-400/45 hover:shadow-[0_0_30px_rgba(34,211,238,0.22)]';
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const cycleThemeMode = () => {
     const next: ThemeMode = isDark ? 'soft' : isSoft ? 'light' : 'dark';
@@ -250,6 +280,19 @@ export function PropertyLandingClient({
     document.documentElement.classList.toggle('dark', darkFamilyMode);
     document.documentElement.setAttribute('data-landing-theme', themeMode);
   }, [darkFamilyMode, themeMode]);
+
+  useEffect(() => {
+    const syncSession = () => {
+      setHasPortalSession(Boolean(window.localStorage.getItem(TOKEN_KEY)));
+    };
+    syncSession();
+    window.addEventListener(AUTH_EVENT, syncSession);
+    window.addEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal-id]'));
@@ -333,6 +376,53 @@ export function PropertyLandingClient({
       }),
       keepalive: true,
     }).catch(() => {});
+  };
+
+  const buildFavoritePayload = () => {
+    const favoriteCampaign: Record<string, string> = {};
+    Object.entries(favoriteQuery).forEach(([key, value]) => {
+      if (['tenant_slug', 'property_id', 'ref', 'next'].includes(key)) return;
+      if (value) favoriteCampaign[key] = String(value);
+    });
+    return {
+      tenant_slug: tenant.slug,
+      property_id: property.id,
+      ref: favoriteQuery.ref || null,
+      page_url: typeof window !== 'undefined' ? window.location.href : undefined,
+      campaign: favoriteCampaign,
+    };
+  };
+
+  const saveFavorite = async () => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setShowFavoriteAuth(true);
+      return;
+    }
+    setSavingFavorite(true);
+    try {
+      const response = await fetch(`${PORTAL_API_BASE}/landing/favorites`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(buildFavoritePayload()),
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.dispatchEvent(new Event(AUTH_EVENT));
+        setShowFavoriteAuth(true);
+        return;
+      }
+      if (!response.ok) throw new Error('No pudimos guardar el favorito.');
+      setFavoriteSaved(true);
+      window.dispatchEvent(new CustomEvent(FAVORITES_EVENT, { detail: { propertyId: property.id } }));
+    } catch {
+      setShowFavoriteAuth(true);
+    } finally {
+      setSavingFavorite(false);
+    }
   };
 
   const widgetMode = (property.widget_mode || 'auto').toLowerCase();
@@ -618,34 +708,38 @@ export function PropertyLandingClient({
       />
       <ShareRail themeMode={themeMode} shareTitle={`${property.name} | ${tenant.name}`} />
 
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? isLight
-              ? 'bg-white/95 backdrop-blur'
-              : isSoft
-              ? 'bg-slate-900/88 backdrop-blur'
-              : 'bg-zinc-950/95 backdrop-blur'
-            : 'bg-transparent'
-        }`}
-      >
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <header className={`fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-md transition-colors duration-300 ${headerClass}`}>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <a
-            href="/"
-            className="inline-flex items-center gap-2 text-lg font-bold tracking-tight"
+            href={portfolioHref}
+            className="inline-flex min-w-0 items-center justify-center gap-3 text-left sm:justify-start"
+            aria-label={`Ir al portfolio de ${tenant.name}`}
           >
-            <img
-              src="/showtime-logo.png"
-              alt="Showtime Prop"
-              className="h-7 w-7 object-contain"
-            />
-            <span>Showtime Prop</span>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isLight ? 'border-zinc-200 bg-zinc-100' : 'border-white/15 bg-white/10'}`}>
+              {tenant.logo_url ? (
+                <img
+                  src={tenant.logo_url}
+                  alt={tenant.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-semibold uppercase">{tenant.name.slice(0, 1)}</span>
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className={`block text-[10px] font-semibold uppercase tracking-[0.24em] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                Portfolio
+              </span>
+              <span className="block max-w-[260px] truncate text-base font-semibold leading-tight sm:max-w-[340px]">
+                {tenant.name}
+              </span>
+            </span>
           </a>
-          <div className="flex items-center gap-4">
+          <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
             <button
               type="button"
               onClick={cycleThemeMode}
-              className="rounded-full p-2 transition hover:bg-black/5 dark:hover:bg-white/10"
+              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${pillClass}`}
               aria-label="Cambiar tema"
             >
               <svg
@@ -678,30 +772,49 @@ export function PropertyLandingClient({
                 )}
               </svg>
             </button>
+            <LeadPortalAuthLauncher query={favoriteQuery} isLight={isLight} />
             <button
               type="button"
-              className="rounded-full p-2 transition hover:bg-black/5 dark:hover:bg-white/10"
-              aria-label="Menú"
+              onClick={() => {
+                if (favoriteSaved) return;
+                if (hasPortalSession) {
+                  void saveFavorite();
+                } else {
+                  setShowFavoriteAuth(true);
+                }
+              }}
+              disabled={savingFavorite}
+              className={`inline-flex h-10 max-w-full items-center justify-center gap-2 rounded-full border px-3 text-[10px] font-semibold uppercase tracking-[0.10em] transition disabled:cursor-wait disabled:opacity-65 sm:px-4 sm:text-[11px] ${favoriteButtonClass}`}
+              aria-label="Guardar en Favoritos"
+              aria-pressed={favoriteSaved}
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 shrink-0" fill={favoriteSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
               </svg>
+              <span>{savingFavorite ? 'Guardando...' : favoriteSaved ? 'Guardado en Favoritos' : 'Guardar en Favoritos'}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="pt-14">
+      {showFavoriteAuth && (
+        <LeadPortalAuthClient
+          mode="login"
+          initialQuery={favoriteQuery}
+          presentation="modal"
+          theme={isLight ? 'light' : 'dark'}
+          onClose={() => setShowFavoriteAuth(false)}
+          onAuthenticated={(payload) => {
+            if (payload.favorite) {
+              setFavoriteSaved(true);
+              window.dispatchEvent(new CustomEvent(FAVORITES_EVENT, { detail: { propertyId: property.id } }));
+            }
+            setShowFavoriteAuth(false);
+          }}
+        />
+      )}
+
+      <main className="pt-[7.25rem] sm:pt-[4.5rem]">
         {property.tour_virtual_url ? (
           <section className="relative min-h-[78svh] w-full overflow-hidden sm:min-h-[calc(100svh-3.5rem)]">
             <iframe

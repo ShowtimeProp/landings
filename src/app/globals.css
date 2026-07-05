@@ -69,6 +69,27 @@
   cursor: pointer;
 }
 
+.portfolio-map-marker-wrap--active .portfolio-map-marker-dot {
+  width: 22px;
+  height: 22px;
+  background: #facc15;
+  border-color: rgba(24, 24, 27, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(250, 204, 21, 0.34),
+    0 0 24px rgba(250, 204, 21, 0.62);
+}
+
+.portfolio-map-marker-wrap--active .portfolio-map-sonar-ring {
+  border-color: rgba(250, 204, 21, 0.78);
+}
+
+.portfolio-property-card--map-highlight {
+  border-color: rgba(34, 211, 238, 0.9) !important;
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.38),
+    0 18px 44px rgba(8, 145, 178, 0.24) !important;
+}
+
 /* Mapa MLS fullscreen: Mapbox necesita altura explícita en el contenedor */
 .mls-map-root .mapboxgl-map,
 .mls-map-root .mapboxgl-canvas-container,
