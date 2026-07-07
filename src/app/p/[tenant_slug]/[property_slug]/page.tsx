@@ -107,6 +107,35 @@ function firstSearchValue(value: string | string[] | undefined): string {
   return value || "";
 }
 
+function buildSlotResolverRedirect(
+  tenantSlug: string,
+  slot: string,
+  searchParams: Record<string, string | string[] | undefined>
+): string {
+  const safeCampaignKeys = [
+    "ref",
+    "source",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "marketing_campaign_id",
+    "variant_id",
+    "fbclid",
+    "gclid",
+    "gbraid",
+    "wbraid",
+  ];
+  const query = new URLSearchParams();
+  for (const key of safeCampaignKeys) {
+    const value = firstSearchValue(searchParams[key]).trim();
+    if (value) query.set(key, value);
+  }
+  const qs = query.toString();
+  return `/v/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(slot)}${qs ? `?${qs}` : ""}`;
+}
+
 async function fetchPublicProperty(
   tenantSlug: string,
   propertySlug: string,
@@ -192,6 +221,11 @@ export default async function PropertyLandingPage({
 }) {
   const { tenant_slug, property_slug } = await params;
   const resolvedSearchParams = await searchParams;
+  const slotParam = firstSearchValue(resolvedSearchParams.slot).trim();
+  if (slotParam) {
+    redirect(buildSlotResolverRedirect(tenant_slug, slotParam, resolvedSearchParams));
+  }
+
   const refParam = firstSearchValue(resolvedSearchParams.ref);
   const referralCode = String(refParam || '')
     .trim()
