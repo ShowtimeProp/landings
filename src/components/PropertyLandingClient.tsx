@@ -1268,83 +1268,84 @@ export function PropertyLandingClient({
           <div
             className={`rounded-xl border p-6 transition duration-300 hover:-translate-y-0.5 ${interactiveCardClass}`}
           >
-            <div className="grid gap-8 lg:grid-cols-[1.25fr_0.95fr_1fr_auto] lg:items-center">
-              <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Tu asesor:
-                </p>
-                <p className="mt-1 text-lg font-semibold">{contactName}</p>
-                <div className="mt-3 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
-                  {tenant.profile_photo_url ? (
-                    <img
-                      src={tenant.profile_photo_url}
-                      alt={contactName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-2xl font-semibold text-zinc-500">
-                      {contactName.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                {tenant.phone && (
-                  <a href={`tel:${tenant.phone}`} className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                    {tenant.phone}
-                  </a>
-                )}
-                {tenant.email && (
-                  <a href={`mailto:${tenant.email}`} className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {tenant.email}
-                  </a>
-                )}
-                <TenantSocialLinks links={tenant.social_links} themeMode={themeMode} className="mt-3" />
-              </div>
-
-              {vcardUrl && (
-                <div className="flex flex-col items-center text-center">
-                  <a
-                    href={vcardUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Agenda Mis Datos"
-                    className="group inline-flex flex-col items-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 p-3 transition hover:border-cyan-300/65 hover:bg-cyan-300/15"
-                  >
-                    {effectiveVcardQrDataUrl ? (
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-8 lg:grid-cols-[1.25fr_0.95fr_1fr] lg:items-center">
+                <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Tu asesor:
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">{contactName}</p>
+                  <div className="mt-3 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+                    {tenant.profile_photo_url ? (
                       <img
-                        src={effectiveVcardQrDataUrl}
-                        alt="QR Agenda Mis Datos"
-                        className="h-36 w-36 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+                        src={tenant.profile_photo_url}
+                        alt={contactName}
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
-                        {vcardQrGenerationFailed ? 'Agenda Mis Datos' : 'Generando QR...'}
-                      </div>
+                      <span className="text-2xl font-semibold text-zinc-500">
+                        {contactName.charAt(0).toUpperCase()}
+                      </span>
                     )}
-                    <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
-                      Agenda Mis Datos
-                    </span>
-                  </a>
+                  </div>
+                  {tenant.phone && (
+                    <a href={`tel:${tenant.phone}`} className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      {tenant.phone}
+                    </a>
+                  )}
+                  {tenant.email && (
+                    <a href={`mailto:${tenant.email}`} className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {tenant.email}
+                    </a>
+                  )}
                 </div>
-              )}
 
-              <div className="flex flex-col items-center text-center">
-                {businessName && (
-                  <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">{businessName}</p>
-                )}
-                {tenant.logo_url && (
-                  <div className="mt-3 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
-                    <img
-                      src={tenant.logo_url}
-                      alt={tenant.name}
-                      className="h-full w-full object-contain"
-                    />
+                {vcardUrl && (
+                  <div className="flex flex-col items-center text-center">
+                    <a
+                      href={vcardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Agenda Mis Datos"
+                      className="group inline-flex flex-col items-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 p-3 transition hover:border-cyan-300/65 hover:bg-cyan-300/15"
+                    >
+                      {effectiveVcardQrDataUrl ? (
+                        <img
+                          src={effectiveVcardQrDataUrl}
+                          alt="QR Agenda Mis Datos"
+                          className="h-36 w-36 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+                        />
+                      ) : (
+                        <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
+                          {vcardQrGenerationFailed ? 'Agenda Mis Datos' : 'Generando QR...'}
+                        </div>
+                      )}
+                      <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
+                        Agenda Mis Datos
+                      </span>
+                    </a>
                   </div>
                 )}
-                {(martilleroName || martilleroReg) && (
-                  <p className="mt-3 max-w-[260px] text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
-                    Martillero Responsable: {martilleroName || 'No informado'} {martilleroReg ? `Reg. ${martilleroReg}` : ''}
-                  </p>
-                )}
+
+                <div className="flex flex-col items-center text-center">
+                  {businessName && (
+                    <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">{businessName}</p>
+                  )}
+                  {tenant.logo_url && (
+                    <div className="mt-3 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
+                      <img
+                        src={tenant.logo_url}
+                        alt={tenant.name}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  )}
+                  {(martilleroName || martilleroReg) && (
+                    <p className="mt-3 max-w-[260px] text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+                      Martillero Responsable: {martilleroName || 'No informado'} {martilleroReg ? `Reg. ${martilleroReg}` : ''}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {trackedWhatsappUrl && (
@@ -1353,11 +1354,12 @@ export function PropertyLandingClient({
                   target="_blank"
                   rel="noreferrer"
                   onClick={trackWhatsappClick}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
+                  className="mx-auto inline-flex min-h-12 w-full max-w-3xl items-center justify-center rounded-lg bg-green-600 px-5 py-3 text-center text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)] sm:text-base"
                 >
-                  WhatsApp
+                  ::: Envianos tu Consulta ::: WhatsApp las 24/7 :::
                 </a>
               )}
+              <TenantSocialLinks links={tenant.social_links} themeMode={themeMode} className="justify-center" />
             </div>
           </div>
         </section>

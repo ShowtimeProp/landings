@@ -141,15 +141,24 @@ async function fetchPublicProperty(
   propertySlug: string,
   referralCode?: string | null
 ): Promise<ApiResponse | null> {
-  const params = new URLSearchParams({
-    tenant_slug: tenantSlug,
-    property_slug: propertySlug,
-  });
-  if (referralCode) {
-    params.set('ref', referralCode);
+  const buildUrl = (ref?: string | null) => {
+    const params = new URLSearchParams({
+      tenant_slug: tenantSlug,
+      property_slug: propertySlug,
+    });
+    if (ref) {
+      params.set("ref", ref);
+    }
+    return `${BACKEND_URL}/api/properties/public/by-slug?${params.toString()}`;
+  };
+  let res = await fetch(buildUrl(referralCode), { next: { revalidate: 60 }, redirect: "manual" });
+  if (!res.ok && referralCode && res.status !== 301 && res.status !== 302) {
+    console.warn(
+      `Public property fetch failed with referral (${res.status}); retrying without referral.`,
+      { tenantSlug, propertySlug }
+    );
+    res = await fetch(buildUrl(null), { next: { revalidate: 60 }, redirect: "manual" });
   }
-  const url = `${BACKEND_URL}/api/properties/public/by-slug?${params.toString()}`;
-  const res = await fetch(url, { next: { revalidate: 60 }, redirect: "manual" });
   if (res.status === 301 || res.status === 302) {
     const loc = res.headers.get("location");
     if (loc) redirect(loc);
