@@ -370,12 +370,12 @@ export default function SmartBioClient({
     document.head.appendChild(link);
   }, [theme.preset]);
 
-  useEffect(() => {
-    const browserLang = normalizeLang(navigator.language);
+    useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedLang = params.get('lang');
-    const resolvedLang = requestedLang ? normalizeLang(requestedLang) : browserLang;
-    setLang(enabledLangs.includes(resolvedLang) ? resolvedLang : enabledLangs[0] || 'es');
+    // Default siempre ES; solo cambia si el visitante pide ?lang= explícito
+    const resolvedLang = requestedLang ? normalizeLang(requestedLang) : 'es';
+    setLang(enabledLangs.includes(resolvedLang) ? resolvedLang : 'es');
 
     const requestedTheme = params.get('theme');
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);

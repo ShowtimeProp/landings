@@ -1,10 +1,13 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PortfolioContactActions from '@/components/PortfolioContactActions';
 import { TenantSocialLinks } from '@/components/social-links';
+import OwnerValuationWizard, {
+  type PersistStepArgs,
+} from '@/components/owner-capture/OwnerValuationWizard';
 
 type Intent = 'seller' | 'landlord';
 
@@ -25,38 +28,6 @@ type OwnerCaptureConfig = {
 };
 
 type ThemeMode = 'dark' | 'soft' | 'light';
-
-type FormState = {
-  property_type: string;
-  location: string;
-  address: string;
-  ambientes: string;
-  area_sqm: string;
-  condition: string;
-  estimated_price: string;
-  price_currency: string;
-  urgency: string;
-  comments: string;
-  full_name: string;
-  whatsapp: string;
-  email: string;
-};
-
-const initialForm: FormState = {
-  property_type: '',
-  location: '',
-  address: '',
-  ambientes: '',
-  area_sqm: '',
-  condition: '',
-  estimated_price: '',
-  price_currency: 'USD',
-  urgency: '',
-  comments: '',
-  full_name: '',
-  whatsapp: '',
-  email: '',
-};
 
 const CAMPAIGN_KEYS = [
   'utm_source',
@@ -177,9 +148,7 @@ export default function OwnerCaptureFunnelClient({
   const initialIntent = searchParams.get('intent') === 'landlord' ? 'landlord' : 'seller';
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => themeParam || getStoredThemeMode());
   const [intent, setIntent] = useState<Intent>(initialIntent);
-  const [form, setForm] = useState<FormState>(initialForm);
   const [companyTrap, setCompanyTrap] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
@@ -217,7 +186,7 @@ export default function OwnerCaptureFunnelClient({
       const value = String(searchParams.get(key) || '').trim();
       if (value) payload[key] = value;
     }
-    return payload;
+    return Object.keys(payload).length ? payload : undefined;
   }, [searchParams]);
 
   const campaignQueryString = useMemo(() => {
@@ -240,10 +209,6 @@ export default function OwnerCaptureFunnelClient({
     return `https://wa.me/${digits}?text=${encodeURIComponent(messageWithTracking)}`;
   }, [campaignQueryString, tenantName, whatsapp]);
 
-  const update = (key: keyof FormState, value: string) => {
-    setForm((current) => ({ ...current, [key]: value }));
-  };
-
   const themeHref = (nextTheme: ThemeMode) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('theme', nextTheme);
@@ -252,48 +217,52 @@ export default function OwnerCaptureFunnelClient({
   };
   const mobileThemeHref = themeHref(nextThemeMode(themeMode));
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const persistWizardStep = async ({
+    wizardStep,
+    formData,
+    leadId,
+    captureFields,
+    priority,
+    message,
+  }: PersistStepArgs) => {
     setError('');
-    setSubmitting(true);
-    try {
-      const payload = {
-        tenant_slug: tenantSlug,
-        intent,
-        full_name: form.full_name,
-        whatsapp: form.whatsapp,
-        email: form.email || undefined,
-        property_type: form.property_type || undefined,
-        location: form.location || undefined,
-        address: form.address || undefined,
-        ambientes: form.ambientes ? Number(form.ambientes) : undefined,
-        area_sqm: form.area_sqm ? Number(form.area_sqm) : undefined,
-        condition: form.condition || undefined,
-        estimated_price: form.estimated_price ? Number(form.estimated_price) : undefined,
-        price_currency: form.price_currency || undefined,
-        urgency: form.urgency || undefined,
-        comments: form.comments || undefined,
-        page_url: window.location.href,
-        ref: searchParams.get('ref') || undefined,
-        campaign,
-        company: companyTrap || undefined,
-        started_at_ms: formStartedAt,
-      };
-      const res = await fetch(`${backendUrl}/api/properties/public/owner-capture`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.detail || 'No pudimos enviar tus datos.');
-      }
-      setDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos enviar tus datos.');
-    } finally {
-      setSubmitting(false);
+    if (companyTrap.trim()) {
+      throw new Error('No pudimos validar el envio.');
     }
+    const payload: Record<string, unknown> = {
+      tenant_slug: tenantSlug,
+      intent,
+      full_name: formData.full_name.trim(),
+      whatsapp: formData.phone.trim(),
+      email: formData.email.trim() || undefined,
+      wizard_step: wizardStep,
+      capture_fields: captureFields,
+      lead_id: leadId || undefined,
+      page_url: typeof window !== 'undefined' ? window.location.href : undefined,
+      ref: searchParams.get('ref') || referralCode || undefined,
+      campaign,
+      company: companyTrap || undefined,
+      started_at_ms: formStartedAt,
+      message,
+    };
+    if (wizardStep >= 4) payload.priority = priority;
+
+    const res = await fetch(`${backendUrl}/api/properties/public/owner-capture`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.detail || 'No pudimos enviar tus datos.');
+    }
+    return { lead_id: data.lead_id ? String(data.lead_id) : undefined };
+  };
+
+  const switchIntent = (next: Intent) => {
+    setIntent(next);
+    setDone(false);
+    setError('');
   };
 
   const title =
@@ -302,8 +271,8 @@ export default function OwnerCaptureFunnelClient({
       : config?.back_title || 'Queres alquilar tu propiedad?';
   const subtitle =
     intent === 'seller'
-      ? config?.front_text || 'Contanos los datos basicos y coordinamos una valoracion.'
-      : config?.back_text || 'Contanos los datos basicos para publicarla y organizar visitas.';
+      ? config?.front_text || 'Completá el wizard de valuación (mismos datos que en Smart Bio) y te contactamos.'
+      : config?.back_text || 'Completá el wizard con los datos de la propiedad y te ayudamos a publicarla.';
   const funnelHeaderText =
     config?.funnel_header_text || 'Gestión comercial inteligente para vender o alquilar mejor.';
   const activeVideoUrl =
@@ -336,13 +305,6 @@ export default function OwnerCaptureFunnelClient({
     : isSoft
     ? 'border-white/10 bg-slate-900/72 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.28)]'
     : 'border-white/10 bg-zinc-950/72 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.35)]';
-  const fieldClass = isLight
-    ? 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-cyan-500'
-    : 'border-white/10 bg-black/30 text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-300';
-  const selectFieldClass = isLight
-    ? 'border-zinc-200 bg-white text-zinc-900 focus:border-cyan-500'
-    : 'border-white/12 bg-zinc-950 text-zinc-100 focus:border-cyan-300';
-  const labelTextClass = isLight ? 'text-zinc-700' : 'text-zinc-300';
   const helperTextClass = isLight ? 'text-zinc-500' : 'text-zinc-400';
   const themeNavItemClass = isLight
     ? 'text-zinc-600 hover:text-zinc-900'
@@ -509,7 +471,7 @@ export default function OwnerCaptureFunnelClient({
             <div className={`inline-flex rounded-full border p-1 ${chipOuterClass}`}>
               <button
                 type="button"
-                onClick={() => setIntent('seller')}
+                onClick={() => switchIntent('seller')}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${intent === 'seller' ? chipActiveClass : chipTextClass}`}
                 style={intent === 'seller' ? { backgroundColor: accent, color: buttonTextColor } : undefined}
               >
@@ -517,7 +479,7 @@ export default function OwnerCaptureFunnelClient({
               </button>
               <button
                 type="button"
-                onClick={() => setIntent('landlord')}
+                onClick={() => switchIntent('landlord')}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${intent === 'landlord' ? chipActiveClass : chipTextClass}`}
                 style={intent === 'landlord' ? { backgroundColor: accent, color: buttonTextColor } : undefined}
               >
@@ -575,7 +537,20 @@ export default function OwnerCaptureFunnelClient({
             )}
           </div>
 
-          <form onSubmit={submit} className={`rounded-2xl border p-5 sm:p-6 ${formShellClass}`}>
+          <div
+            className={`rounded-2xl border p-5 sm:p-6 ${formShellClass}`}
+            style={
+              {
+                '--bio-primary': accent,
+                '--bio-primary-fg': buttonTextColor,
+                '--bio-text': isLight ? '#18181b' : '#f4f4f5',
+                '--bio-muted': isLight ? '#71717a' : '#a1a1aa',
+                '--bio-border': isLight ? '#e4e4e7' : 'rgba(255,255,255,0.12)',
+                '--bio-surface': isLight ? '#ffffff' : 'rgba(0,0,0,0.2)',
+                '--bio-bg': isLight ? '#fafafa' : 'rgba(0,0,0,0.28)',
+              } as CSSProperties
+            }
+          >
             <input
               type="text"
               tabIndex={-1}
@@ -602,101 +577,26 @@ export default function OwnerCaptureFunnelClient({
               </div>
             ) : (
               <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Tipo de propiedad</span>
-                    <input className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.property_type} onChange={(e) => update('property_type', e.target.value)} placeholder="Departamento, casa, local" />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Zona</span>
-                    <input className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.location} onChange={(e) => update('location', e.target.value)} placeholder="Barrio o ciudad" />
-                  </label>
-                  <label className="space-y-1 text-sm sm:col-span-2">
-                    <span className={labelTextClass}>Direccion aproximada</span>
-                    <input className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Calle, altura o referencia" />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Ambientes</span>
-                    <input type="number" min="0" className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.ambientes} onChange={(e) => update('ambientes', e.target.value)} />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Metros cuadrados</span>
-                    <input type="number" min="0" className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.area_sqm} onChange={(e) => update('area_sqm', e.target.value)} />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Estado</span>
-                    <select
-                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
-                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
-                      value={form.condition}
-                      onChange={(e) => update('condition', e.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      <option value="excelente">Excelente</option>
-                      <option value="muy_bueno">Muy bueno</option>
-                      <option value="a_refaccionar">A refaccionar</option>
-                    </select>
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Urgencia</span>
-                    <select
-                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
-                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
-                      value={form.urgency}
-                      onChange={(e) => update('urgency', e.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      <option value="ahora">Ahora</option>
-                      <option value="30_60_dias">30 a 60 dias</option>
-                      <option value="sin_apuro">Sin apuro</option>
-                    </select>
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Precio esperado</span>
-                    <input type="number" min="0" className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.estimated_price} onChange={(e) => update('estimated_price', e.target.value)} />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Moneda</span>
-                    <select
-                      className={`w-full rounded-xl border px-3 py-2 outline-none ${selectFieldClass}`}
-                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
-                      value={form.price_currency}
-                      onChange={(e) => update('price_currency', e.target.value)}
-                    >
-                      <option value="USD">USD</option>
-                      <option value="ARS">ARS</option>
-                    </select>
-                  </label>
-                  <label className="space-y-1 text-sm sm:col-span-2">
-                    <span className={labelTextClass}>Comentarios</span>
-                    <textarea className={`min-h-24 w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.comments} onChange={(e) => update('comments', e.target.value)} placeholder="Detalles importantes, expensas, disponibilidad, preferencias" />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>Nombre completo</span>
-                    <input required className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.full_name} onChange={(e) => update('full_name', e.target.value)} />
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className={labelTextClass}>WhatsApp</span>
-                    <input required className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.whatsapp} onChange={(e) => update('whatsapp', e.target.value)} />
-                  </label>
-                  <label className="space-y-1 text-sm sm:col-span-2">
-                    <span className={labelTextClass}>Email opcional</span>
-                    <input type="email" className={`w-full rounded-xl border px-3 py-2 outline-none ${fieldClass}`} value={form.email} onChange={(e) => update('email', e.target.value)} />
-                  </label>
-                </div>
-
-                {error && <p className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="mt-5 w-full rounded-full px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ backgroundColor: accent, color: buttonTextColor }}
-                >
-                  {submitting ? 'Enviando...' : intent === 'seller' ? 'Solicitar valoracion' : 'Publicarla en alquiler'}
-                </button>
+                <OwnerValuationWizard
+                  key={intent}
+                  backendUrl={backendUrl}
+                  tenantSlug={tenantSlug}
+                  storageKey={`sp_portfolio_valuation_${tenantSlug}_${intent}`}
+                  intent={intent}
+                  requirePhone
+                  funnel={intent === 'seller' ? 'portfolio_seller_valuation' : 'portfolio_landlord_valuation'}
+                  thanksMessage={successCopy}
+                  onPersist={persistWizardStep}
+                  onComplete={() => setDone(true)}
+                />
+                {error ? (
+                  <p className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {error}
+                  </p>
+                ) : null}
               </>
             )}
-          </form>
+          </div>
         </section>
       </div>
       {videoModalOpen && (activeVideoUrl || modalEmbedUrl) && (
