@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PortfolioContactActions from '@/components/PortfolioContactActions';
+import ShareRail from '@/components/ShareRail';
 import { TenantSocialLinks } from '@/components/social-links';
 import OwnerValuationWizard, {
   type PersistStepArgs,
@@ -55,6 +56,49 @@ function nextThemeMode(theme: ThemeMode): ThemeMode {
   if (theme === 'dark') return 'soft';
   if (theme === 'soft') return 'light';
   return 'dark';
+}
+
+function themeLabel(theme: ThemeMode): string {
+  if (theme === 'light') return 'Tema claro';
+  if (theme === 'soft') return 'Tema suave';
+  return 'Tema oscuro';
+}
+
+function ThemeIcon({ theme, className = 'h-5 w-5' }: { theme: ThemeMode; className?: string }) {
+  if (theme === 'light') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+    );
+  }
+  if (theme === 'soft') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+      />
+    </svg>
+  );
 }
 
 function getStoredThemeMode(): ThemeMode {
@@ -122,8 +166,6 @@ export default function OwnerCaptureFunnelClient({
   vcardQrDataUrl,
   defaultPropertyId,
   referralCode,
-  propertiesCount,
-  toursCount,
   config,
 }: {
   backendUrl: string;
@@ -139,8 +181,6 @@ export default function OwnerCaptureFunnelClient({
   vcardQrDataUrl?: string | null;
   defaultPropertyId?: string | null;
   referralCode?: string | null;
-  propertiesCount?: number;
-  toursCount?: number;
   config?: OwnerCaptureConfig | null;
 }) {
   const searchParams = useSearchParams();
@@ -215,7 +255,20 @@ export default function OwnerCaptureFunnelClient({
     if (intent) params.set('intent', intent);
     return `/captacion/${tenantSlug}?${params.toString()}`;
   };
-  const mobileThemeHref = themeHref(nextThemeMode(themeMode));
+  const nextTheme = nextThemeMode(themeMode);
+  const portfolioHref = (() => {
+    const params = new URLSearchParams();
+    if (campaignQueryString) {
+      new URLSearchParams(campaignQueryString).forEach((value, key) => {
+        params.set(key, value);
+      });
+    }
+    if (referralCode) params.set('ref', referralCode);
+    params.set('theme', themeMode);
+    const qs = params.toString();
+    return qs ? `/p/${tenantSlug}?${qs}` : `/p/${tenantSlug}`;
+  })();
+  const mobileThemeHref = themeHref(nextTheme);
 
   const persistWizardStep = async ({
     wizardStep,
@@ -287,12 +340,21 @@ export default function OwnerCaptureFunnelClient({
       ? `El equipo de ${tenantName} ya tiene tus datos para avanzar con la valuación y te vamos a estar contactando a la brevedad. Gracias por elegirnos!`
       : `El equipo de ${tenantName} ya tiene tus datos para avanzar con la publicación y te vamos a estar contactando a la brevedad. Gracias por elegirnos!`;
   const rootClass = isLight
-    ? 'bg-[#f4f7fb] text-zinc-900'
+    ? 'bg-zinc-50 text-zinc-900'
     : isSoft
-    ? 'bg-[#0d1422] text-zinc-100'
+    ? 'bg-slate-900 text-zinc-100'
     : 'bg-[#07090d] text-zinc-100';
-  const headerBorderClass = isLight ? 'border-zinc-200' : 'border-white/10';
-  const titleTextClass = isLight ? 'text-zinc-900' : 'text-zinc-50';
+  const overlayClass = isLight
+    ? 'bg-[radial-gradient(circle_at_12%_12%,rgba(56,189,248,0.08),transparent_40%),radial-gradient(circle_at_86%_10%,rgba(244,114,182,0.07),transparent_36%),radial-gradient(circle_at_50%_85%,rgba(14,165,233,0.06),transparent_48%)]'
+    : isSoft
+    ? 'bg-[radial-gradient(circle_at_12%_12%,rgba(56,189,248,0.12),transparent_40%),radial-gradient(circle_at_86%_10%,rgba(244,114,182,0.08),transparent_35%),radial-gradient(circle_at_50%_85%,rgba(14,165,233,0.07),transparent_48%)]'
+    : 'bg-[radial-gradient(circle_at_12%_12%,rgba(56,189,248,0.14),transparent_38%),radial-gradient(circle_at_86%_10%,rgba(244,114,182,0.10),transparent_33%),radial-gradient(circle_at_50%_85%,rgba(14,165,233,0.08),transparent_45%)]';
+  const headerClass = isLight
+    ? 'border-zinc-200 bg-white/85'
+    : isSoft
+    ? 'border-white/10 bg-slate-950/40'
+    : 'border-white/10 bg-black/30';
+  const titleTextClass = isLight ? 'text-zinc-900' : 'text-zinc-100';
   const subtitleTextClass = isLight ? 'text-zinc-600' : 'text-zinc-300';
   const chipOuterClass = isLight ? 'border-zinc-200 bg-white' : 'border-white/15 bg-white/5';
   const chipTextClass = isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-300 hover:text-white';
@@ -305,96 +367,72 @@ export default function OwnerCaptureFunnelClient({
     : isSoft
     ? 'border-white/10 bg-slate-900/72 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.28)]'
     : 'border-white/10 bg-zinc-950/72 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.35)]';
-  const helperTextClass = isLight ? 'text-zinc-500' : 'text-zinc-400';
-  const themeNavItemClass = isLight
-    ? 'text-zinc-600 hover:text-zinc-900'
-    : 'text-zinc-300 hover:text-white';
   const heroClass = isLight
-    ? 'bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_48%,#fff7ed_100%)] text-zinc-950'
+    ? 'border-zinc-200 bg-gradient-to-br from-white via-zinc-100 to-zinc-200 shadow-[0_20px_50px_rgba(15,23,42,0.12)]'
     : isSoft
-    ? 'bg-[linear-gradient(135deg,#102235_0%,#1e1b4b_55%,#312e81_100%)] text-zinc-50'
-    : 'bg-[linear-gradient(135deg,#0b1d26_0%,#16181d_55%,#241436_100%)] text-zinc-50';
-  const badgeBaseClass = isLight
-    ? 'border-zinc-200 bg-white/85 text-zinc-700'
-    : 'border-white/20 bg-black/15 text-white/80';
+    ? 'border-white/15 bg-gradient-to-br from-slate-800/95 via-slate-900/88 to-slate-950/80 shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
+    : 'border-white/15 bg-gradient-to-br from-zinc-900/95 via-zinc-900/85 to-zinc-950/70 shadow-[0_20px_65px_rgba(0,0,0,0.45)]';
   const emailButtonClass = isLight
-    ? 'border-zinc-300 bg-white text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100'
-    : 'border-white/15 bg-white/6 text-zinc-100 hover:border-white/30 hover:bg-white/10';
+    ? 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100'
+    : 'border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10';
+  const themeToggleClass = isLight
+    ? 'border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-white'
+    : 'border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10';
 
   return (
-    <main className={`min-h-screen ${rootClass}`}>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-        <header className={`flex items-center justify-between gap-4 border-b pb-5 ${headerBorderClass}`}>
-          <Link href={`/p/${tenantSlug}`} className="flex items-center gap-3">
-            <span className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border ${headerBorderClass} bg-white/5`}>
+    <div className={`min-h-screen overflow-x-hidden ${rootClass}`}>
+      <ShareRail themeMode={themeMode} shareTitle={`Captación · ${tenantName}`} />
+      <div className={`pointer-events-none fixed inset-0 -z-10 ${overlayClass}`} />
+
+      <header className={`border-b backdrop-blur-md ${headerClass}`}>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <Link href={portfolioHref} className="flex min-w-0 items-center justify-center gap-3 sm:justify-start">
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+                isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
+              }`}
+            >
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt={tenantName} className="h-full w-full object-contain p-1" />
               ) : (
                 <span className="text-sm font-semibold">{tenantName.charAt(0).toUpperCase()}</span>
               )}
-            </span>
-            <span>
-              <span className="block text-sm font-semibold">{tenantName}</span>
-              <span className={`block text-xs ${helperTextClass}`}>{funnelHeaderText}</span>
-            </span>
+            </div>
+            <div className="min-w-0">
+              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                Portfolio
+              </p>
+              <p className="truncate text-sm font-semibold">{tenantName}</p>
+            </div>
           </Link>
-          <Link
-            href={mobileThemeHref}
-            aria-label="Cambiar tema"
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full sm:hidden ${chipOuterClass}`}
-          >
-            {themeMode === 'dark' ? (
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            ) : themeMode === 'soft' ? (
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v18m9-9H3m13.5-5.5l-9 11M7.5 6.5l9 11"
-                />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-            )}
-          </Link>
-          <nav className={`hidden rounded-full border p-1 sm:inline-flex ${chipOuterClass}`}>
-            {(['light', 'soft', 'dark'] as ThemeMode[]).map((mode) => (
-              <Link
-                key={mode}
-                href={themeHref(mode)}
-                className={`rounded-full px-2.5 py-1 text-sm transition ${
-                  themeMode === mode ? chipActiveClass : themeNavItemClass
-                }`}
-              >
-                {mode === 'light' ? 'Light' : mode === 'soft' ? 'Soft' : 'Dark'}
-              </Link>
-            ))}
-          </nav>
-        </header>
 
-        <section className={`relative mt-8 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
+          <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
+            <Link
+              href={mobileThemeHref}
+              aria-label={`Cambiar a ${themeLabel(nextTheme).toLowerCase()}`}
+              title={themeLabel(nextTheme)}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${themeToggleClass}`}
+            >
+              <ThemeIcon theme={nextTheme} />
+            </Link>
+            <p className={`hidden max-w-xs truncate text-xs sm:block ${subtitleTextClass}`}>
+              {funnelHeaderText}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 sm:pt-10">
+        <section className={`relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden border-y border-x-0 px-4 py-6 sm:px-8 lg:px-10 ${heroClass}`}>
           <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl" />
-          <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>Asesor de ventas</p>
-              <div className="mt-3 flex items-center gap-4 sm:gap-5">
+          <div className="relative z-10 mx-auto grid max-w-7xl gap-6 text-center lg:grid-cols-[1fr_auto] lg:items-center lg:text-left">
+            <div className="flex flex-col items-center lg:items-start">
+              <p className={`text-xs uppercase tracking-[0.2em] ${isLight ? 'text-cyan-700' : 'text-cyan-200/80'}`}>
+                Asesor inmobiliario
+              </p>
+              <div className="mt-3 flex flex-col items-center gap-3 sm:flex-row sm:gap-5">
                 <div
                   className={`flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-32 sm:w-32 ${
                     isLight ? 'border border-zinc-200 bg-zinc-100' : 'border border-white/20 bg-white/5'
@@ -409,20 +447,12 @@ export default function OwnerCaptureFunnelClient({
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{contactName}</h2>
               </div>
-              <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${subtitleTextClass}`}>
+              <p className={`mx-auto mt-3 max-w-2xl text-sm leading-relaxed lg:mx-0 ${subtitleTextClass}`}>
                 {portfolioHeroText}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
-                  {propertiesCount || 0} propiedades
-                </span>
-                <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
-                  {toursCount || 0} tours virtuales
-                </span>
-              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col items-center gap-3 lg:flex-row lg:justify-end lg:gap-4">
               <div className="space-y-2">
                 <PortfolioContactActions
                   backendUrl={backendUrl}
@@ -433,8 +463,13 @@ export default function OwnerCaptureFunnelClient({
                   campaignQueryString={campaignQueryString}
                   emailButtonClass={emailButtonClass}
                   themeMode={themeMode}
+                  className="justify-center lg:justify-start"
                 />
-                <TenantSocialLinks links={socialLinks} themeMode={themeMode} className="pt-1" />
+                <TenantSocialLinks
+                  links={socialLinks}
+                  themeMode={themeMode}
+                  className="justify-center pt-1 lg:justify-start"
+                />
               </div>
               {vcardUrl ? (
                 <a
@@ -453,7 +488,7 @@ export default function OwnerCaptureFunnelClient({
                     <img
                       src={vcardQrDataUrl}
                       alt={`QR de ${contactName}`}
-                      className="h-28 w-28 rounded-lg bg-white p-1.5 sm:h-32 sm:w-32"
+                      className="h-28 w-28 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_20px_rgba(0,0,0,0.16)] sm:h-32 sm:w-32"
                     />
                   ) : (
                     <div className="flex h-28 w-28 items-center justify-center rounded-lg bg-white/80 text-xs font-medium text-zinc-600 sm:h-32 sm:w-32">
@@ -568,7 +603,7 @@ export default function OwnerCaptureFunnelClient({
                   {successCopy}
                 </p>
                 <Link
-                  href={`/p/${tenantSlug}`}
+                  href={portfolioHref}
                   className="mt-6 inline-flex rounded-full px-4 py-2 text-sm font-semibold"
                   style={{ backgroundColor: accent, color: buttonTextColor }}
                 >
@@ -598,7 +633,7 @@ export default function OwnerCaptureFunnelClient({
             )}
           </div>
         </section>
-      </div>
+      </main>
       {videoModalOpen && (activeVideoUrl || modalEmbedUrl) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/78 px-4 py-8">
           <button
@@ -638,6 +673,6 @@ export default function OwnerCaptureFunnelClient({
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

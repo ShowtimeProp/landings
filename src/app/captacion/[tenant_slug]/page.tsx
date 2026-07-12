@@ -117,8 +117,6 @@ export default async function OwnerCapturePage({
   if (!tenant) notFound();
 
   const properties = Array.isArray(portfolio?.properties) ? portfolio.properties : [];
-  const propertiesCount = properties.length;
-  const toursCount = properties.filter((item) => String(item.tour_virtual_url || '').trim()).length;
   const defaultPropertyId = properties[0]?.id ?? null;
   const vcardUrlFromApi = String(tenant.vcard_url || '').trim().replace(
     /\/vcard\/([^/?#]+)\.vcf(?=$|[?#])/i,
@@ -154,8 +152,6 @@ export default async function OwnerCapturePage({
       vcardQrDataUrl={vcardQrDataUrl || null}
       defaultPropertyId={defaultPropertyId}
       referralCode={referralCode}
-      propertiesCount={propertiesCount}
-      toursCount={toursCount}
       config={tenant.owner_capture || null}
     />
   );

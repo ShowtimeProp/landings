@@ -3,6 +3,8 @@
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from 'react';
 import { SocialNetworkIcon, socialLinkEntries, type SocialLinksMap } from '@/components/social-links';
 import SellerValuationWizard from '@/components/smart-bio/SellerValuationWizard';
+import BuyerCaptureWizard from '@/components/smart-bio/BuyerCaptureWizard';
+import RentalCaptureWizard from '@/components/smart-bio/RentalCaptureWizard';
 import {
   modeLabel,
   nextMode,
@@ -54,7 +56,13 @@ type SmartBioData = {
   links?: {
     portfolio?: string | null;
     vcard?: string | null;
+    blog?: string | null;
   };
+  blog?: {
+    enabled?: boolean;
+    show_link?: boolean;
+    href?: string | null;
+  } | null;
   properties?: Array<{
     id: string;
     name: string;
@@ -69,6 +77,7 @@ type SmartBioData = {
     bedrooms?: number | null;
     area_sqm?: number | null;
   }>;
+  properties_total?: number;
   widget_context?: {
     tenant_id: string;
     seller_ref_code?: string | null;
@@ -178,6 +187,28 @@ function normalizeLang(raw: string | null | undefined): 'es' | 'en' | 'pt' {
   if (value.startsWith('en')) return 'en';
   if (value.startsWith('pt')) return 'pt';
   return 'es';
+}
+
+function nextLang(current: 'es' | 'en' | 'pt', enabled: ReadonlyArray<'es' | 'en' | 'pt'>): 'es' | 'en' | 'pt' {
+  if (enabled.length <= 1) return current;
+  const idx = enabled.indexOf(current);
+  return enabled[(idx >= 0 ? idx + 1 : 0) % enabled.length];
+}
+
+function langLabel(code: 'es' | 'en' | 'pt', uiLang: 'es' | 'en' | 'pt' = 'es'): string {
+  if (uiLang === 'en') {
+    if (code === 'es') return 'Spanish';
+    if (code === 'en') return 'English';
+    return 'Portuguese';
+  }
+  if (uiLang === 'pt') {
+    if (code === 'es') return 'Espanhol';
+    if (code === 'en') return 'Inglês';
+    return 'Português';
+  }
+  if (code === 'es') return 'Español';
+  if (code === 'en') return 'Inglés';
+  return 'Portugués';
 }
 
 function formatMoney(price?: number | null, currency?: string | null) {
@@ -323,7 +354,7 @@ export default function SmartBioClient({
     const tabs: Array<{ intent: CaptureIntent; label: string }> = [];
     if (blocks.seller_capture) tabs.push({ intent: 'seller_capture', label: currentText.tab_seller || 'Vender' });
     if (blocks.buyer_capture) tabs.push({ intent: 'buyer_capture', label: currentText.tab_buyer || 'Comprar' });
-    if (blocks.vacation_rental) tabs.push({ intent: 'vacation_rental', label: currentText.tab_vacation || 'Vacacional' });
+    if (blocks.vacation_rental) tabs.push({ intent: 'vacation_rental', label: currentText.tab_vacation || 'Alquileres' });
     return tabs;
   }, [blocks.seller_capture, blocks.buyer_capture, blocks.vacation_rental, currentText.tab_seller, currentText.tab_buyer, currentText.tab_vacation]);
 
@@ -469,6 +500,17 @@ export default function SmartBioClient({
     window.history.replaceState({}, '', url.toString());
   };
 
+  const upcomingLang = nextLang(lang, enabledLangs);
+  const cycleLang = () => {
+    if (enabledLangs.length <= 1) return;
+    const next = nextLang(lang, enabledLangs);
+    setLang(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', next);
+    window.history.replaceState({}, '', url.toString());
+    void track('bio_card_click', { card: 'lang_cycle', lang: next });
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setFormState('sending');
@@ -489,44 +531,59 @@ export default function SmartBioClient({
     }
   };
 
-  const quickActionClass = `flex min-h-11 items-center justify-center gap-2 border px-3 py-2 text-center text-sm font-semibold shadow-sm transition hover:border-[var(--bio-primary)] ${theme.radiusClass} ${theme.borderClass} bg-[var(--bio-surface)] text-[var(--bio-text)]`;
+  const glassBtnClass = `bio-glass-btn flex min-h-11 items-center justify-center gap-2 px-3 py-2 text-center text-sm font-semibold ${theme.radiusClass}`;
+  const glassIconBtnClass = `bio-glass-btn bio-glass-btn--icon inline-flex h-10 w-10 items-center justify-center text-xs font-semibold uppercase tracking-wide ${theme.radiusClass}`;
+  const glassPrimaryBtnClass = `bio-glass-btn bio-glass-btn--primary flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-semibold ${theme.radiusClass}`;
   const inputClass = `h-11 w-full border px-3 text-sm outline-none transition focus:border-[var(--bio-primary)] ${theme.radiusClass} ${theme.borderClass} bg-[var(--bio-bg)] text-[var(--bio-text)]`;
   const primaryButtonStyle: CSSProperties =
     theme.buttonStyle === 'outline'
       ? { borderColor: 'var(--bio-primary)', color: 'var(--bio-primary)', background: 'transparent' }
-      : { background: 'var(--bio-primary)', color: 'var(--bio-primary-fg)', borderColor: 'var(--bio-primary)' };
+      : {};
 
   return (
     <main
+      data-bio-mode={mode}
       className={`min-h-screen text-[var(--bio-text)] transition-colors duration-300 ${theme.fontClass}`}
       style={{ ...theme.vars, background: 'var(--bio-bg)' } as CSSProperties}
     >
       <section className="mx-auto flex w-full max-w-2xl flex-col px-4 pb-24 pt-5 sm:px-6">
         <div className="mb-4 flex items-center justify-between gap-3">
-          {profile.logo_url || initialData.tenant.logo_url ? (
-            <img src={profile.logo_url || initialData.tenant.logo_url || ''} alt={initialData.tenant.name} className="h-10 max-w-36 object-contain" />
-          ) : (
-            <span className="text-sm font-semibold">{initialData.tenant.name}</span>
-          )}
-          <div className="flex items-center gap-2">
-            <div className={`flex border bg-[var(--bio-surface)] p-1 ${theme.radiusClass} ${theme.borderClass}`}>
-              {enabledLangs.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setLang(item)}
-                  className={`h-8 rounded-md px-3 text-xs font-semibold uppercase ${lang === item ? 'bg-[var(--bio-text)] text-[var(--bio-bg)]' : theme.mutedTextClass}`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
+          <a
+            href={initialData.links?.portfolio || `/p/${initialData.tenant.slug}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`}
+            className="flex min-w-0 items-center gap-2.5"
+            onClick={() => track('bio_card_click', { card: 'tenant_logo' })}
+          >
+            {profile.logo_url || initialData.tenant.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.logo_url || initialData.tenant.logo_url || ''}
+                alt={initialData.tenant.name}
+                className="h-10 max-w-[7.5rem] object-contain"
+              />
+            ) : null}
+            <span className="min-w-0">
+              <span className={`block text-[10px] uppercase tracking-[0.16em] ${theme.mutedTextClass}`}>Inmobiliaria</span>
+              <span className="block truncate text-sm font-semibold leading-tight">{initialData.tenant.name}</span>
+            </span>
+          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            {enabledLangs.length > 1 ? (
+              <button
+                type="button"
+                onClick={cycleLang}
+                aria-label={`Cambiar a ${langLabel(upcomingLang, lang)}`}
+                title={langLabel(upcomingLang, lang)}
+                className={glassIconBtnClass}
+              >
+                {upcomingLang}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={cycleMode}
               aria-label={modeLabel(upcomingMode, lang)}
               title={modeLabel(upcomingMode, lang)}
-              className={`inline-flex h-10 w-10 items-center justify-center border bg-[var(--bio-surface)] ${theme.radiusClass} ${theme.borderClass}`}
+              className={glassIconBtnClass}
             >
               <ThemeModeIcon mode={upcomingMode} />
             </button>
@@ -559,25 +616,25 @@ export default function SmartBioClient({
         {blocks.quick_actions && (
           <nav className="mt-4 grid grid-cols-2 gap-2">
             {whatsappHref ? (
-              <a className={quickActionClass} href={whatsappHref} onClick={() => track('bio_whatsapp_click', { target: 'whatsapp' })}>
+              <a className={glassBtnClass} href={whatsappHref} onClick={() => track('bio_whatsapp_click', { target: 'whatsapp' })}>
                 <WhatsAppIcon />
                 {currentText.quick_whatsapp || 'WhatsApp'}
               </a>
             ) : null}
             {contact.phone ? (
-              <a className={quickActionClass} href={`tel:${contact.phone}`}>
+              <a className={glassBtnClass} href={`tel:${contact.phone}`}>
                 <PhoneIcon />
                 {currentText.quick_call || 'Llamar'}
               </a>
             ) : null}
             {contact.email ? (
-              <a className={quickActionClass} href={`mailto:${contact.email}`}>
+              <a className={glassBtnClass} href={`mailto:${contact.email}`}>
                 <MailIcon />
                 {currentText.quick_email || 'Email'}
               </a>
             ) : null}
             {initialData.links?.vcard ? (
-              <a className={quickActionClass} href={initialData.links.vcard} onClick={() => track('bio_vcard_download', { target: 'vcard' })}>
+              <a className={glassBtnClass} href={initialData.links.vcard} onClick={() => track('bio_vcard_download', { target: 'vcard' })}>
                 <ContactIcon />
                 {currentText.quick_vcard || 'Guardar contacto'}
               </a>
@@ -610,9 +667,9 @@ export default function SmartBioClient({
           )}
           {blocks.vacation_rental && (
             <FunnelCard
-              title={currentText.vacation_rental_title || '¿Buscás alquiler vacacional?'}
-              text={currentText.vacation_rental_text || 'Compartinos fechas, zona y cantidad de huéspedes.'}
-              cta={currentText.vacation_rental_cta || 'Consultar disponibilidad'}
+              title={currentText.vacation_rental_title || '¿Buscás alquilar?'}
+              text={currentText.vacation_rental_text || 'Vacacional o largo plazo: precalificamos tu búsqueda en minutos.'}
+              cta={currentText.vacation_rental_cta || 'Precalificar alquiler'}
               theme={theme}
               buttonStyle={primaryButtonStyle}
               active={captureOpen && activeTab === 'vacation_rental'}
@@ -654,19 +711,27 @@ export default function SmartBioClient({
                   void track(eventType, eventData);
                 }}
               />
-            ) : (
-              <form onSubmit={submit} className="space-y-3">
-                <input required value={form.full_name} onChange={(e) => setForm((v) => ({ ...v, full_name: e.target.value }))} className={inputClass} placeholder={currentText.form_name || 'Nombre'} />
-                <input value={form.phone} onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} className={inputClass} placeholder={currentText.form_phone || 'WhatsApp'} />
-                <input value={form.email} onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} className={inputClass} placeholder={currentText.form_email || 'Email'} />
-                <textarea value={form.message} onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))} className={`min-h-24 w-full border px-3 py-2 text-sm outline-none focus:border-[var(--bio-primary)] ${theme.radiusClass} ${theme.borderClass} bg-[var(--bio-bg)] text-[var(--bio-text)]`} placeholder={currentText.form_message || 'Mensaje'} />
-                <button disabled={formState === 'sending'} className={`h-11 w-full border px-4 text-sm disabled:opacity-60 ${theme.ctaClass}`} style={primaryButtonStyle}>
-                  {formState === 'sending' ? currentText.form_sending || 'Enviando...' : currentText.form_submit || 'Enviar consulta'}
-                </button>
-                {formState === 'sent' ? <p className="text-sm font-medium" style={{ color: 'var(--bio-primary)' }}>{currentText.form_sent || 'Consulta enviada. Te contactamos a la brevedad.'}</p> : null}
-                {formState === 'error' ? <p className="text-sm font-medium text-red-600">{formError}</p> : null}
-              </form>
-            )}
+            ) : activeTab === 'buyer_capture' ? (
+              <BuyerCaptureWizard
+                backendUrl={backendUrl}
+                slug={profile.slug}
+                lang={lang}
+                pageUrl={pageUrl}
+                onTrack={(eventType, eventData) => {
+                  void track(eventType, eventData);
+                }}
+              />
+            ) : activeTab === 'vacation_rental' ? (
+              <RentalCaptureWizard
+                backendUrl={backendUrl}
+                slug={profile.slug}
+                lang={lang}
+                pageUrl={pageUrl}
+                onTrack={(eventType, eventData) => {
+                  void track(eventType, eventData);
+                }}
+              />
+            ) : null}
           </section>
         ) : null}
 
@@ -674,8 +739,7 @@ export default function SmartBioClient({
           <a
             href={initialData.links.portfolio}
             onClick={() => track('bio_card_click', { card: 'portfolio' })}
-            className={`mt-4 flex items-center justify-between p-4 text-white shadow-sm ${theme.radiusClass}`}
-            style={{ background: 'var(--bio-text)', color: 'var(--bio-bg)' }}
+            className={`bio-glass-btn bio-glass-btn--primary mt-4 flex items-center justify-between p-4 ${theme.radiusClass}`}
           >
             <span className="text-sm font-semibold">{currentText.portfolio_title || 'Ver portfolio'}</span>
             <span className="text-sm opacity-70">/p/{initialData.tenant.slug}</span>
@@ -727,6 +791,19 @@ export default function SmartBioClient({
                 );
               })}
             </div>
+            {initialData.links?.portfolio ? (
+              <a
+                href={initialData.links.portfolio}
+                onClick={() => track('bio_card_click', { card: 'portfolio_all_properties' })}
+                className={`mt-4 ${glassPrimaryBtnClass}`}
+              >
+                {lang === 'en'
+                  ? `View all properties${initialData.properties_total ? ` (${initialData.properties_total})` : ''}`
+                  : lang === 'pt'
+                    ? `Ver todos os imóveis${initialData.properties_total ? ` (${initialData.properties_total})` : ''}`
+                    : `Ver todas las propiedades${initialData.properties_total ? ` (${initialData.properties_total})` : ''}`}
+              </a>
+            ) : null}
           </section>
         ) : null}
 
@@ -764,10 +841,17 @@ export default function SmartBioClient({
           </section>
         )}
 
-        {(blocks.podcast && profile.media?.podcast_url) || (blocks.blogs && profile.media?.blog_url) || profile.custom_links?.length ? (
+        {(blocks.podcast && profile.media?.podcast_url) || initialData.links?.blog || profile.custom_links?.length ? (
           <section className="mt-6 grid gap-2">
             {blocks.podcast && profile.media?.podcast_url ? <LinkPill href={profile.media.podcast_url} label={currentText.podcast_title || 'Podcast'} theme={theme} onClick={() => track('bio_card_click', { card: 'podcast' })} /> : null}
-            {blocks.blogs && profile.media?.blog_url ? <LinkPill href={profile.media.blog_url} label={currentText.blogs_title || 'Blogs inmobiliarios'} theme={theme} onClick={() => track('bio_card_click', { card: 'blogs' })} /> : null}
+            {initialData.links?.blog ? (
+              <LinkPill
+                href={initialData.links.blog}
+                label={currentText.blogs_title || 'Blog inmobiliario'}
+                theme={theme}
+                onClick={() => track('bio_card_click', { card: 'blogs' })}
+              />
+            ) : null}
             {(profile.custom_links || []).map((link, index) =>
               link.url ? <LinkPill key={`${link.url}-${index}`} href={link.url} label={link.label || link.url} theme={theme} onClick={() => track('bio_card_click', { card: 'custom_link', url: link.url })} /> : null
             )}
@@ -784,7 +868,7 @@ export default function SmartBioClient({
                 rel="noreferrer"
                 title={item.label}
                 aria-label={item.label}
-                className={`inline-flex h-11 w-11 items-center justify-center border bg-[var(--bio-surface)] transition hover:border-[var(--bio-primary)] ${theme.radiusClass} ${theme.borderClass}`}
+                className={`bio-glass-btn bio-glass-btn--icon inline-flex h-11 w-11 items-center justify-center ${theme.radiusClass}`}
                 onClick={() => track('bio_card_click', { card: 'social', network: item.key })}
               >
                 <SocialNetworkIcon network={item.key} className="h-5 w-5" />
@@ -827,7 +911,10 @@ function FunnelCard({
     >
       <p className="text-base font-semibold">{title}</p>
       <p className={`mt-1 text-sm ${theme.mutedTextClass}`}>{text}</p>
-      <span className={`mt-3 inline-flex border px-3 py-2 text-sm ${theme.ctaClass}`} style={buttonStyle}>
+      <span
+        className={`bio-glass-btn bio-glass-btn--primary mt-3 inline-flex min-h-10 items-center px-3 py-2 text-sm font-semibold ${theme.radiusClass}`}
+        style={theme.buttonStyle === 'outline' ? buttonStyle : undefined}
+      >
         {cta}
       </span>
     </button>
@@ -851,7 +938,7 @@ function LinkPill({
       target="_blank"
       rel="noreferrer"
       onClick={onClick}
-      className={`flex items-center justify-between px-4 py-3 text-sm font-semibold ${theme.cardClass} ${theme.borderClass}`}
+      className={`bio-glass-btn flex items-center justify-between px-4 py-3 text-sm font-semibold ${theme.radiusClass}`}
     >
       <span>{label}</span>
       <span className={theme.mutedTextClass}>Abrir</span>

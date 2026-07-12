@@ -154,6 +154,39 @@ const OPERATION_LABELS: Record<string, string> = {
   both: 'Venta y alquiler',
 };
 
+function classifyPortfolioOperation(raw?: string | null): 'sale' | 'rent' | 'vacation' | null {
+  const value = String(raw || '').trim().toLowerCase();
+  if (!value) return null;
+  if (
+    value.includes('tempor') ||
+    value.includes('vacacion') ||
+    value === 'rent_short_term' ||
+    value === 'temporary_rent' ||
+    value === 'alquiler_temporario'
+  ) {
+    return 'vacation';
+  }
+  if (
+    value === 'sale' ||
+    value === 'venta' ||
+    value.includes('venta') ||
+    value.includes('sale')
+  ) {
+    return 'sale';
+  }
+  if (
+    value === 'rent' ||
+    value === 'alquiler' ||
+    value === 'rent_long_term' ||
+    value === 'alquiler_largo_plazo' ||
+    value.includes('alquiler') ||
+    value.includes('rent')
+  ) {
+    return 'rent';
+  }
+  return null;
+}
+
 const DEFAULT_PORTFOLIO_OG_DESCRIPTION =
   'Descubre nuestro portfolio de propiedades! Atendemos 24/7 todo el año! Respondemos tus consultas al instante!';
 
@@ -423,6 +456,9 @@ export default async function PortfolioPage({
   const { tenant, properties } = data;
   const campaignQueryString = buildCampaignQueryString(resolvedSearchParams, referralCode);
   const toursCount = properties.filter((item) => (item.tour_virtual_url || '').trim()).length;
+  const saleCount = properties.filter((item) => classifyPortfolioOperation(item.operation_type) === 'sale').length;
+  const rentCount = properties.filter((item) => classifyPortfolioOperation(item.operation_type) === 'rent').length;
+  const vacationCount = properties.filter((item) => classifyPortfolioOperation(item.operation_type) === 'vacation').length;
   const whatsappUrl = getWhatsappUrl(tenant.whatsapp, tenant.tenant_name || tenant.name, campaignQueryString);
   const showBlogLink = Boolean(blogSummary?.blog_enabled && blogSummary.show_blog_link && (blogSummary.articles || []).length > 0);
   const contactName =
@@ -674,6 +710,15 @@ export default async function PortfolioPage({
                 </span>
                 <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
                   {toursCount} tours virtuales
+                </span>
+                <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
+                  {saleCount} Venta
+                </span>
+                <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
+                  {rentCount} Alquiler
+                </span>
+                <span className={`rounded-full border px-3 py-1 text-xs ${badgeBaseClass}`}>
+                  {vacationCount} Vacacional
                 </span>
                 {toursCount >= 3 && (
                   <span className="rounded-full border border-emerald-300/30 bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200">
