@@ -468,6 +468,8 @@ export default async function PortfolioPage({
   const portfolioBio =
     String(tenant.portfolio_bio || '').trim() ||
     `Referente comercial de ${tenant.tenant_name || tenant.name}. Podés contactar por WhatsApp, email o agendar sus datos con QR. Te atendemos las 24hs los 365 dias del año!`;
+  const martilleroName = String(tenant.martillero_responsable || '').trim();
+  const martilleroReg = String(tenant.martillero_registro || '').trim();
   const vcardUrlFromApi = String(tenant.vcard_url || '').trim().replace(
     /\/vcard\/([^/?#]+)\.vcf(?=$|[?#])/i,
     '/vcard/$1'
@@ -871,6 +873,13 @@ export default async function PortfolioPage({
             isLight ? 'border-zinc-200 text-zinc-600' : 'border-white/10 text-zinc-400'
           }`}
         >
+          {(martilleroName || martilleroReg) && (
+            <p className={`mb-3 leading-relaxed ${isLight ? 'text-zinc-600' : 'text-zinc-300'}`}>
+              Martillero / Corredor Público Responsable
+              {martilleroName ? `: ${martilleroName}` : ''}
+              {martilleroReg ? ` · Reg. ${martilleroReg}` : ''}
+            </p>
+          )}
           <p>
             Todos los derechos reservados Showtime Prop - Especialistas en Marketing Inmobiliario e
             Inteligencia Artificial.{' '}

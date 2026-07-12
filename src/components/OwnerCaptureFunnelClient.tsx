@@ -518,7 +518,7 @@ export default function OwnerCaptureFunnelClient({
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${intent === 'landlord' ? chipActiveClass : chipTextClass}`}
                 style={intent === 'landlord' ? { backgroundColor: accent, color: buttonTextColor } : undefined}
               >
-                Alquiler
+                Alquileres
               </button>
             </div>
             <h1 className={`mt-5 text-3xl font-semibold leading-tight sm:text-4xl ${titleTextClass}`}>{title}</h1>

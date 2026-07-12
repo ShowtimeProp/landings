@@ -47,6 +47,8 @@ type SmartBioData = {
     slug: string;
     logo_url?: string | null;
     social_links?: Record<string, string> | null;
+    martillero_responsable?: string | null;
+    martillero_registro?: string | null;
   };
   seller?: {
     user_id?: string | null;
@@ -349,14 +351,27 @@ export default function SmartBioClient({
   const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
   const whatsappText = `Hola, vi tu Smart Bio y quiero consultar. ref=${ref || '-'} source=smart_bio`;
   const whatsappHref = buildWhatsappLink(String(contact.whatsapp || contact.phone || ''), whatsappText);
+  const martilleroName = String(initialData.tenant.martillero_responsable || '').trim();
+  const martilleroReg = String(initialData.tenant.martillero_registro || '').trim();
 
   const captureTabs = useMemo(() => {
     const tabs: Array<{ intent: CaptureIntent; label: string }> = [];
     if (blocks.seller_capture) tabs.push({ intent: 'seller_capture', label: currentText.tab_seller || 'Vender' });
     if (blocks.buyer_capture) tabs.push({ intent: 'buyer_capture', label: currentText.tab_buyer || 'Comprar' });
-    if (blocks.vacation_rental) tabs.push({ intent: 'vacation_rental', label: currentText.tab_vacation || 'Alquileres' });
+    if (blocks.vacation_rental) {
+      const rawTab = String(currentText.tab_vacation || '').trim();
+      const rentalLabel =
+        !rawTab || /vacacional/i.test(rawTab)
+          ? lang === 'en'
+            ? 'Rentals'
+            : lang === 'pt'
+              ? 'Aluguéis'
+              : 'Alquileres'
+          : rawTab;
+      tabs.push({ intent: 'vacation_rental', label: rentalLabel });
+    }
     return tabs;
-  }, [blocks.seller_capture, blocks.buyer_capture, blocks.vacation_rental, currentText.tab_seller, currentText.tab_buyer, currentText.tab_vacation]);
+  }, [blocks.seller_capture, blocks.buyer_capture, blocks.vacation_rental, currentText.tab_seller, currentText.tab_buyer, currentText.tab_vacation, lang]);
 
   const socialLinks = useMemo(() => {
     const merged: SocialLinksMap = {};
@@ -879,6 +894,13 @@ export default function SmartBioClient({
 
         <footer className={`mt-6 border-t pt-4 text-center text-xs ${theme.borderClass} ${theme.mutedTextClass}`}>
           <p>{initialData.tenant.name}</p>
+          {martilleroName || martilleroReg ? (
+            <p className="mt-2 leading-relaxed">
+              Martillero / Corredor Público Responsable
+              {martilleroName ? `: ${martilleroName}` : ''}
+              {martilleroReg ? ` · Reg. ${martilleroReg}` : ''}
+            </p>
+          ) : null}
           <p className="mt-1">Powered by Showtime Prop</p>
         </footer>
       </section>

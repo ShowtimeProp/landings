@@ -24,6 +24,7 @@ export type ValuationFormData = {
   bedrooms: string;
   bathrooms: string;
   amenities: string[];
+  rental_listing_type: '' | 'vacation' | 'long_term';
   sale_purpose: string;
   sell_timeline: string;
 };
@@ -79,6 +80,11 @@ const SELLER_PURPOSES = [
   { value: 'sell_to_buy', label: 'Quiero vender para comprar otra propiedad', priority: 'normal' as const },
 ];
 
+const LANDLORD_LISTING_TYPES = [
+  { value: 'vacation' as const, label: 'Alquiler vacacional o temporal' },
+  { value: 'long_term' as const, label: 'Alquiler a largo plazo' },
+];
+
 const LANDLORD_PURPOSES = [
   { value: 'rent_fast', label: 'Quiero alquilar rápido', priority: 'high' as const },
   { value: 'rent_curiosity', label: 'Solo quiero saber cuánto podría pedir', priority: 'low' as const },
@@ -89,6 +95,12 @@ const TIMELINES = [
   { value: 'lt_3m', label: 'Menos de 3 meses' },
   { value: '3_to_6m', label: 'De 3 a 6 meses' },
   { value: 'gt_6m', label: 'Más de 6 meses' },
+];
+
+const LANDLORD_TIMELINES = [
+  { value: 'lt_3m', label: 'Necesito inquilino en menos de 3 meses' },
+  { value: '3_to_6m', label: 'En 3 a 6 meses' },
+  { value: 'gt_6m', label: 'Sin apuro / más de 6 meses' },
 ];
 
 export const EMPTY_VALUATION_FORM: ValuationFormData = {
@@ -109,6 +121,7 @@ export const EMPTY_VALUATION_FORM: ValuationFormData = {
   bedrooms: '',
   bathrooms: '',
   amenities: [],
+  rental_listing_type: '',
   sale_purpose: '',
   sell_timeline: '',
 };
@@ -146,6 +159,7 @@ export function buildValuationCaptureFields(formData: ValuationFormData, step: n
   }
   if (step >= 2) base.amenities = formData.amenities;
   if (step >= 3) {
+    if (formData.rental_listing_type) base.rental_listing_type = formData.rental_listing_type;
     base.sale_purpose = formData.sale_purpose;
     base.lead_temperature = temperatureForPurpose(formData.sale_purpose);
   }
@@ -184,7 +198,16 @@ export default function OwnerValuationWizard({
   const [leadId, setLeadId] = useState('');
   const [formData, setFormData] = useState<ValuationFormData>(EMPTY_VALUATION_FORM);
   const purposes = intent === 'landlord' ? LANDLORD_PURPOSES : SELLER_PURPOSES;
+  const timelines = intent === 'landlord' ? LANDLORD_TIMELINES : TIMELINES;
   const isSeller = intent === 'seller';
+  const stepTitles = useMemo(
+    () =>
+      STEPS.map((step) => {
+        if (intent === 'landlord' && step.id === 'purpose') return { ...step, title: 'Tipo' };
+        return step;
+      }),
+    [intent]
+  );
 
   useEffect(() => {
     try {
@@ -240,6 +263,7 @@ export default function OwnerValuationWizard({
       case 2:
         return true;
       case 3:
+        if (!isSeller && !formData.rental_listing_type) return false;
         return formData.sale_purpose !== '';
       case 4:
         return formData.sell_timeline !== '';
@@ -332,7 +356,7 @@ export default function OwnerValuationWizard({
     <div className="w-full py-1">
       <motion.div className="mb-5" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
         <div className="mb-2 flex justify-between gap-1">
-          {STEPS.map((step, index) => (
+          {stepTitles.map((step, index) => (
             <button
               key={step.id}
               type="button"
@@ -483,6 +507,26 @@ export default function OwnerValuationWizard({
 
             {currentStep === 3 && (
               <div className="space-y-4">
+                {!isSeller ? (
+                  <div className="space-y-2">
+                    <div>
+                      <h3 className="text-lg font-semibold">¿Qué tipo de alquiler querés publicar?</h3>
+                      <p className="mt-1 text-sm text-[var(--bio-muted)]">Esto define el circuito comercial.</p>
+                    </div>
+                    <div className="space-y-2">
+                      {LANDLORD_LISTING_TYPES.map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className={choiceClass(formData.rental_listing_type === item.value)}
+                          onClick={() => updateField('rental_listing_type', item.value)}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <h3 className="text-lg font-semibold">
                     {isSeller ? '¿Cuál es tu plan o propósito de venta?' : '¿Cuál es tu plan para alquilar?'}
@@ -508,7 +552,7 @@ export default function OwnerValuationWizard({
                   <p className="mt-1 text-sm text-[var(--bio-muted)]">Elegí una opción.</p>
                 </div>
                 <div className="space-y-2">
-                  {TIMELINES.map((item) => (
+                  {timelines.map((item) => (
                     <button key={item.value} type="button" className={choiceClass(formData.sell_timeline === item.value)} onClick={() => updateField('sell_timeline', item.value)}>
                       {item.label}
                     </button>
@@ -566,7 +610,7 @@ export default function OwnerValuationWizard({
 
       {error ? <p className="mt-3 text-sm font-medium text-red-600">{error}</p> : null}
       <p className="mt-3 text-center text-xs text-[var(--bio-muted)]">
-        Paso {currentStep + 1} de {STEPS.length}: {STEPS[currentStep].title}
+        Paso {currentStep + 1} de {STEPS.length}: {stepTitles[currentStep].title}
       </p>
     </div>
   );
