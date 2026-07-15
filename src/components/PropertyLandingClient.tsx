@@ -6,6 +6,7 @@ import Script from 'next/script';
 import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import ShareRail from '@/components/ShareRail';
+import PropertyBrochureModal from '@/components/PropertyBrochureModal';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
 import {
@@ -736,6 +737,7 @@ export function PropertyLandingClient({
             </span>
           </a>
           <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
+            <PropertyBrochureModal property={property} tenantName={tenant.name} isLight={isLight} />
             <button
               type="button"
               onClick={cycleThemeMode}
