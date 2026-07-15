@@ -7,6 +7,7 @@ import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import ShareRail from '@/components/ShareRail';
 import PropertyBrochureModal from '@/components/PropertyBrochureModal';
+import { GlassButton } from '@/components/ui/glass-button';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
 import {
@@ -737,7 +738,6 @@ export function PropertyLandingClient({
             </span>
           </a>
           <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
-            <PropertyBrochureModal property={property} tenantName={tenant.name} isLight={isLight} />
             <button
               type="button"
               onClick={cycleThemeMode}
@@ -869,8 +869,17 @@ export function PropertyLandingClient({
           data-reveal-id="overview"
           className={`mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6 ${revealClass('overview')}`}
         >
-          <div className="mb-6 inline-block rounded bg-black px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black">
-            {opLabel}
+          <div className="mb-6 flex items-center gap-2">
+            <GlassButton
+              size="sm"
+              type="button"
+              aria-label={`Tipo de transacción: ${opLabel}`}
+              contentClassName="uppercase tracking-[0.12em]"
+              className="cursor-default"
+            >
+              {opLabel}
+            </GlassButton>
+            <PropertyBrochureModal property={property} tenantName={tenant.name} isLight={isLight} />
           </div>
           <h1 className="text-3xl font-bold uppercase tracking-tight sm:text-4xl">
             {addressStr}

@@ -108,13 +108,20 @@ export default function PropertyBrochureModal({ property, tenantName, isLight }:
 
   const fieldClass = `w-full rounded-lg border px-3 py-2 text-sm outline-none ${isLight ? 'border-zinc-300 bg-white text-zinc-900' : 'border-white/15 bg-zinc-900 text-white'}`;
   return <>
-    <button type="button" title="Bajar Ficha" onClick={() => setOpen(true)}
-      className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-xs font-semibold uppercase tracking-wider transition ${isLight ? 'border-zinc-300 bg-white hover:bg-zinc-100' : 'border-white/15 bg-white/5 hover:bg-white/10'}`}>
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M8 15h8M8 18h6"/></svg>
-      Bajar ficha
-    </button>
-    {open && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
-      <div className={`max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border p-5 shadow-2xl ${isLight ? 'border-zinc-200 bg-white text-zinc-900' : 'border-white/15 bg-zinc-950 text-white'}`}>
+    <span className="group relative inline-flex">
+      <button type="button" title="Bajar Ficha" aria-label="Bajar Ficha PDF" onClick={() => setOpen(true)}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition hover:-translate-y-0.5 ${isLight ? 'border-zinc-300 bg-white text-red-600 hover:bg-red-50' : 'border-white/20 bg-white/10 text-red-400 hover:bg-white/15'}`}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5"/>
+          <path d="M8 16h1.3a1.7 1.7 0 0 0 0-3.4H8V18m5-5.4V18h1.1a2.3 2.3 0 0 0 0-4.6H13m4.2 4.6v-5.4H20m-2.8 2.3h2.2"/>
+        </svg>
+      </button>
+      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100">
+        Bajar Ficha
+      </span>
+    </span>
+    {open && <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 p-4 pt-6 sm:p-8" role="dialog" aria-modal="true">
+      <div className={`mx-auto w-full max-w-3xl rounded-2xl border p-5 shadow-2xl ${isLight ? 'border-zinc-200 bg-white text-zinc-900' : 'border-white/15 bg-zinc-950 text-white'}`}>
         <div className="flex items-start justify-between gap-4"><div><h2 className="text-xl font-bold">Obtener ficha PDF</h2><p className="text-sm opacity-70">Personalizala con tus datos y elegí hasta 6 fotos.</p></div>
           <button type="button" onClick={() => setOpen(false)} className="rounded-full px-3 py-1 text-xl" aria-label="Cerrar">×</button></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
