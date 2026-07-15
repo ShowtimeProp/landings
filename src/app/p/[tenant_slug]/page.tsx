@@ -12,7 +12,7 @@ import ShareRail from '@/components/ShareRail';
 import TenantGtm from '@/components/TenantGtm';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { TenantSocialLinks } from '@/components/social-links';
-import QRCode from 'qrcode';
+import { ContactQrCard } from '@/components/ui/contact-qr-card';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -475,23 +475,6 @@ export default async function PortfolioPage({
     '/vcard/$1'
   );
   const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
-  const persistedQrFallback = tenant.contact_ref_applied ? '' : String(tenant.vcard_qr_data_url || '').trim();
-  let portfolioVcardQrDataUrl = '';
-  if (vcardUrl) {
-    try {
-      portfolioVcardQrDataUrl = await QRCode.toDataURL(vcardUrl, {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        width: 320,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffffff',
-        },
-      });
-    } catch {
-      portfolioVcardQrDataUrl = persistedQrFallback;
-    }
-  }
   const hasReviewsContent = Boolean(
     placeReviews &&
       (placeReviews.rating != null ||
@@ -760,30 +743,14 @@ export default async function PortfolioPage({
                 <TenantSocialLinks links={tenant.social_links} themeMode={theme} className="justify-center pt-1 lg:justify-start" />
               </div>
               {vcardUrl && (
-                <a
+                <ContactQrCard
+                  value={vcardUrl}
                   href={vcardUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Agenda mis datos"
-                  className={`group hidden flex-col items-center rounded-xl border p-1.5 transition lg:inline-flex ${
-                    isLight
-                      ? 'border-cyan-300/80 bg-cyan-50/90 hover:border-cyan-400 hover:bg-cyan-100'
-                      : 'border-cyan-300/35 bg-cyan-400/10 hover:border-cyan-300/60 hover:bg-cyan-300/15'
-                  }`}
-                >
-                  {portfolioVcardQrDataUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={portfolioVcardQrDataUrl}
-                      alt="QR Agenda mis datos"
-                      className="h-28 w-28 rounded-lg bg-white p-1 object-contain shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
-                    />
-                  ) : (
-                    <div className="flex h-28 w-28 items-center justify-center rounded-lg bg-white text-[10px] text-zinc-500">
-                      E-Card
-                    </div>
-                  )}
-                </a>
+                  label="Guarda My Contacto"
+                  size={112}
+                  isLight={isLight}
+                  className="hidden lg:inline-flex"
+                />
               )}
             </div>
           </div>
