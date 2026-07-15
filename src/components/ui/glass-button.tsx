@@ -3,31 +3,37 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const glassButtonVariants = cva(
-  'relative isolate all-unset cursor-pointer rounded-full transition-all',
+  'glass-button relative isolate cursor-pointer transition-all',
   {
     variants: {
       size: {
-        default: 'text-base font-medium',
-        sm: 'text-sm font-medium',
-        lg: 'text-lg font-medium',
-        icon: 'h-10 w-10',
+        default: 'text-base font-semibold',
+        sm: 'text-sm font-semibold',
+        lg: 'text-lg font-semibold',
+        icon: 'h-12 w-12',
+      },
+      tone: {
+        default: '',
+        whatsapp: 'glass-button--whatsapp',
+        email: 'glass-button--email',
       },
     },
     defaultVariants: {
       size: 'default',
+      tone: 'default',
     },
   }
 )
 
 const glassButtonTextVariants = cva(
-  'glass-button-text relative block select-none tracking-tighter',
+  'glass-button-text relative block select-none tracking-tight',
   {
     variants: {
       size: {
-        default: 'px-6 py-3.5',
-        sm: 'px-4 py-2',
-        lg: 'px-8 py-4',
-        icon: 'flex h-10 w-10 items-center justify-center',
+        default: 'px-7 py-3.5',
+        sm: 'px-6 py-3',
+        lg: 'px-9 py-4',
+        icon: 'flex h-12 w-12 items-center justify-center',
       },
     },
     defaultVariants: {
@@ -37,25 +43,57 @@ const glassButtonTextVariants = cva(
 )
 
 export interface GlassButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'href'>,
     VariantProps<typeof glassButtonVariants> {
   contentClassName?: string
+  href?: string
+  target?: string
+  rel?: string
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, children, size, contentClassName, ...props }, ref) => {
+  (
+    {
+      className,
+      children,
+      size,
+      tone,
+      contentClassName,
+      href,
+      target,
+      rel,
+      type = 'button',
+      ...props
+    },
+    ref
+  ) => {
+    const classes = cn(glassButtonVariants({ size, tone }))
+    const textClasses = cn(glassButtonTextVariants({ size }), contentClassName)
+
+    const inner = (
+      <>
+        <span className={textClasses}>{children}</span>
+      </>
+    )
+
     return (
-      <div className={cn('glass-button-wrap cursor-pointer rounded-full', className)}>
-        <button
-          className={cn('glass-button', glassButtonVariants({ size }))}
-          ref={ref}
-          {...props}
-        >
-          <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
-            {children}
-          </span>
-        </button>
-        <div className="glass-button-shadow rounded-full" aria-hidden="true" />
+      <div className={cn('glass-button-wrap cursor-pointer', className)}>
+        {href ? (
+          <a
+            className={classes}
+            href={href}
+            target={target}
+            rel={rel}
+            onClick={props.onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}
+          >
+            {inner}
+          </a>
+        ) : (
+          <button className={classes} ref={ref} type={type} {...props}>
+            {inner}
+          </button>
+        )}
+        <div className="glass-button-shadow" aria-hidden="true" />
       </div>
     )
   }

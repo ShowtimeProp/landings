@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GlassButton } from '@/components/ui/glass-button';
 
 type BrochureProperty = {
   name: string;
@@ -42,30 +41,35 @@ function addressText(address?: Record<string, unknown> | null) {
     .join(' ');
 }
 
-/** Icono PDF moderno (documento + badge) para el trigger de ficha. */
+/** Icono PDF moderno (documento + badge) — suelto, sin contenedor glass. */
 function PdfBadgeIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       <defs>
         <linearGradient id="pdfDocGrad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#f87171" />
-          <stop offset="100%" stopColor="#dc2626" />
+          <stop offset="55%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#b91c1c" />
         </linearGradient>
+        <filter id="pdfSoftShadow" x="-20%" y="-10%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.4" floodColor="#7f1d1d" floodOpacity="0.35" />
+        </filter>
       </defs>
       <path
-        d="M6.2 2.5h7.2L18.5 7.6V20a1.5 1.5 0 0 1-1.5 1.5H6.2A1.5 1.5 0 0 1 4.7 20V4A1.5 1.5 0 0 1 6.2 2.5Z"
+        d="M7.2 2.8h10.2L25 10.4V27a2 2 0 0 1-2 2H7.2A2 2 0 0 1 5.2 27V4.8A2 2 0 0 1 7.2 2.8Z"
         fill="url(#pdfDocGrad)"
+        filter="url(#pdfSoftShadow)"
       />
-      <path d="M13.4 2.6v4.2c0 .5.4.9.9.9h4.1" fill="#fecaca" opacity="0.95" />
-      <rect x="7.2" y="12.2" width="9.6" height="5.2" rx="1.2" fill="#fff" opacity="0.96" />
+      <path d="M17.4 2.9v5.8c0 .7.5 1.2 1.2 1.2H24" fill="#fecaca" />
+      <rect x="8.4" y="16.2" width="15.2" height="7.2" rx="1.6" fill="#fff" />
       <text
-        x="12"
-        y="16.05"
+        x="16"
+        y="21.4"
         textAnchor="middle"
-        fontSize="4.2"
+        fontSize="6.2"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
         fontWeight="800"
-        letterSpacing="0.4"
+        letterSpacing="0.6"
         fill="#b91c1c"
       >
         PDF
@@ -164,19 +168,19 @@ export default function PropertyBrochureModal({ property, isLight }: Props) {
   const fieldClass = `w-full rounded-lg border px-3 py-2 text-sm outline-none ${isLight ? 'border-zinc-300 bg-white text-zinc-900' : 'border-white/15 bg-zinc-900 text-white'}`;
   return (
     <>
-      <span className="group relative inline-flex">
-        <GlassButton
+      <span className="group relative inline-flex items-center">
+        <button
           type="button"
-          size="icon"
           title="Bajar Ficha"
           aria-label="Bajar Ficha PDF"
           onClick={() => setOpen(true)}
+          className="inline-flex h-12 w-12 items-center justify-center rounded-xl transition duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         >
-          <PdfBadgeIcon className="h-5 w-5 drop-shadow-sm" />
-        </GlassButton>
+          <PdfBadgeIcon className="h-11 w-11 drop-shadow-md" />
+        </button>
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100"
         >
           Bajar Ficha
         </span>

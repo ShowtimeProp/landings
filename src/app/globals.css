@@ -14,12 +14,14 @@
   --border: #27272a;
 }
 
-/* Glass Button — 21st.dev / easemize (liquid glass on light landings). */
+/* Glass Button — 21st.dev / easemize; radio alineado a cards (rounded-xl = 0.75rem). */
 .glass-button-wrap {
+  --glass-radius: 0.75rem;
   position: relative;
   display: inline-flex;
   isolation: isolate;
   vertical-align: middle;
+  border-radius: var(--glass-radius);
   filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.18));
 }
 
@@ -31,6 +33,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-radius: var(--glass-radius, 0.75rem);
   border: 1px solid rgba(255, 255, 255, 0.72);
   background:
     linear-gradient(155deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.22) 48%, rgba(226, 232, 240, 0.28) 100%),
@@ -47,13 +50,14 @@
     box-shadow 180ms ease,
     border-color 180ms ease,
     background 180ms ease;
+  cursor: pointer;
 }
 
 .glass-button::before {
   content: '';
   position: absolute;
-  inset: 1px 12% 55%;
-  border-radius: 999px;
+  inset: 1px 10% 52%;
+  border-radius: calc(var(--glass-radius, 0.75rem) - 2px);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
   opacity: 0.85;
   pointer-events: none;
@@ -95,12 +99,50 @@
 
 .glass-button-shadow {
   position: absolute;
-  inset: 8px 10px -6px;
+  inset: 10px 12px -8px;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--glass-radius, 0.75rem);
   background: rgba(15, 23, 42, 0.22);
   filter: blur(10px);
   pointer-events: none;
+}
+
+.glass-button--whatsapp {
+  border-color: rgba(34, 197, 94, 0.45);
+  background:
+    linear-gradient(155deg, rgba(220, 252, 231, 0.75) 0%, rgba(34, 197, 94, 0.22) 55%, rgba(22, 163, 74, 0.18) 100%),
+    rgba(34, 197, 94, 0.16);
+  color: #14532d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(22, 101, 52, 0.12),
+    0 0 22px rgba(34, 197, 94, 0.28);
+}
+
+.glass-button--whatsapp:hover {
+  border-color: rgba(34, 197, 94, 0.7);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 10px 28px rgba(34, 197, 94, 0.35);
+}
+
+.glass-button--email {
+  border-color: rgba(56, 189, 248, 0.4);
+  background:
+    linear-gradient(155deg, rgba(224, 242, 254, 0.7) 0%, rgba(56, 189, 248, 0.18) 55%, rgba(14, 165, 233, 0.14) 100%),
+    rgba(56, 189, 248, 0.12);
+  color: #0c4a6e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(3, 105, 161, 0.1),
+    0 0 20px rgba(56, 189, 248, 0.24);
+}
+
+.glass-button--email:hover {
+  border-color: rgba(56, 189, 248, 0.65);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 10px 28px rgba(56, 189, 248, 0.32);
 }
 
 .dark .glass-button {
@@ -117,6 +159,22 @@
 
 .dark .glass-button::before {
   opacity: 0.35;
+}
+
+.dark .glass-button--whatsapp {
+  border-color: rgba(74, 222, 128, 0.4);
+  background:
+    linear-gradient(155deg, rgba(34, 197, 94, 0.35) 0%, rgba(22, 101, 52, 0.25) 100%),
+    rgba(20, 83, 45, 0.45);
+  color: #dcfce7;
+}
+
+.dark .glass-button--email {
+  border-color: rgba(125, 211, 252, 0.35);
+  background:
+    linear-gradient(155deg, rgba(56, 189, 248, 0.28) 0%, rgba(12, 74, 110, 0.35) 100%),
+    rgba(8, 47, 73, 0.5);
+  color: #e0f2fe;
 }
 
 .dark .glass-button-shadow {

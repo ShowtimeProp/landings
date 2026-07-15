@@ -8,6 +8,7 @@ import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import ShareRail from '@/components/ShareRail';
 import PropertyBrochureModal from '@/components/PropertyBrochureModal';
 import { GlassButton } from '@/components/ui/glass-button';
+import { Mail, MessageCircle } from 'lucide-react';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
 import {
@@ -869,13 +870,13 @@ export function PropertyLandingClient({
           data-reveal-id="overview"
           className={`mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6 ${revealClass('overview')}`}
         >
-          <div className="mb-6 flex items-center gap-3">
+          <div className="mb-6 flex items-center gap-4">
             <GlassButton
-              size="sm"
+              size="default"
               type="button"
               tabIndex={-1}
               aria-label={`Tipo de operación: ${opLabel}`}
-              contentClassName="uppercase tracking-[0.14em] font-semibold"
+              contentClassName="uppercase tracking-[0.16em] font-semibold"
               className="pointer-events-none"
             >
               {opLabel || 'OPERACIÓN'}
@@ -966,25 +967,31 @@ export function PropertyLandingClient({
             )}
           </div>
 
-          <div className="mt-12 flex flex-wrap gap-3">
+          <div className="mt-12 flex flex-wrap items-center gap-4">
             {trackedWhatsappUrl && (
-              <a
+              <GlassButton
+                size="default"
+                tone="whatsapp"
                 href={trackedWhatsappUrl}
                 target="_blank"
                 rel="noreferrer"
                 onClick={trackWhatsappClick}
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white shadow-[0_0_18px_rgba(34,197,94,0.30)] transition duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-[0_0_28px_rgba(34,197,94,0.50)]"
+                contentClassName="flex items-center gap-2.5"
               >
-                Consultar por WhatsApp
-              </a>
+                <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                <span>Consultar por WhatsApp</span>
+              </GlassButton>
             )}
             {tenant.email && (
-              <a
+              <GlassButton
+                size="default"
+                tone="email"
                 href={`mailto:${tenant.email}`}
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-100/80 px-5 py-2.5 font-medium text-zinc-900 shadow-[0_0_14px_rgba(148,163,184,0.24)] transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-zinc-950 hover:shadow-[0_0_24px_rgba(56,189,248,0.35)] dark:border-zinc-500 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
+                contentClassName="flex items-center gap-2.5"
               >
-                Enviar email
-              </a>
+                <Mail className="h-5 w-5" aria-hidden="true" />
+                <span>Enviar email</span>
+              </GlassButton>
             )}
           </div>
         </section>
