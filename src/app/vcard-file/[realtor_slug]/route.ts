@@ -1,6 +1,9 @@
+import sharp from 'sharp';
+
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const MAX_EMBEDDED_PHOTO_BYTES = 512 * 1024;
+const MAX_SOURCE_PHOTO_BYTES = 8 * 1024 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -83,14 +86,6 @@ function splitName(fullName: string): { first: string; last: string } {
   };
 }
 
-function resolvePhotoType(contentType: string): string {
-  const type = contentType.toLowerCase();
-  if (type.includes('png')) return 'PNG';
-  if (type.includes('gif')) return 'GIF';
-  if (type.includes('webp')) return 'WEBP';
-  return 'JPEG';
-}
-
 async function buildEmbeddedPhotoLine(photoUrl: string): Promise<string | null> {
   if (!photoUrl) return null;
   try {
@@ -100,12 +95,22 @@ async function buildEmbeddedPhotoLine(photoUrl: string): Promise<string | null> 
     const contentType = String(photoResponse.headers.get('content-type') || '').trim();
     if (!contentType.toLowerCase().startsWith('image/')) return null;
 
-    const bytes = await photoResponse.arrayBuffer();
-    if (!bytes.byteLength || bytes.byteLength > MAX_EMBEDDED_PHOTO_BYTES) return null;
+    const declaredLength = Number(photoResponse.headers.get('content-length') || 0);
+    if (declaredLength > MAX_SOURCE_PHOTO_BYTES) return null;
 
-    const encoded = Buffer.from(bytes).toString('base64');
-    const photoType = resolvePhotoType(contentType);
-    return `PHOTO;ENCODING=b;TYPE=${photoType}:${encoded}`;
+    const bytes = await photoResponse.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > MAX_SOURCE_PHOTO_BYTES) return null;
+
+    const compatiblePhoto = await sharp(Buffer.from(bytes))
+      .rotate()
+      .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+      .flatten({ background: '#ffffff' })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+    if (!compatiblePhoto.byteLength || compatiblePhoto.byteLength > MAX_EMBEDDED_PHOTO_BYTES) return null;
+
+    const encoded = compatiblePhoto.toString('base64');
+    return `PHOTO;ENCODING=b;TYPE=JPEG:${encoded}`;
   } catch {
     return null;
   }

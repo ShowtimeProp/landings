@@ -8,7 +8,6 @@ import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import ShareRail from '@/components/ShareRail';
 import PropertyBrochureModal from '@/components/PropertyBrochureModal';
 import { GlassButton } from '@/components/ui/glass-button';
-import { ContactQrCard } from '@/components/ui/contact-qr-card';
 import { Mail, MessageCircle } from 'lucide-react';
 import PortfolioMapLoader from '@/components/PortfolioMapLoader';
 import { TenantSocialLinks } from '@/components/social-links';
@@ -20,6 +19,7 @@ import {
   campaignParamsFromSearchParams,
   captureCurrentCampaignFromLocation,
 } from '@/lib/campaign-tracking';
+import QRCode from 'qrcode';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const WIDGET_ASSET_VERSION = 'agent-orbs-v3-20260321';
@@ -223,6 +223,11 @@ export function PropertyLandingClient({
     user_ratings_total: number;
     open_now?: boolean | null;
     opening_hours?: string[];
+  } | null>(null);
+  const [generatedVcardQr, setGeneratedVcardQr] = useState<{
+    vcardUrl: string;
+    dataUrl: string;
+    failed: boolean;
   } | null>(null);
   const [campaign] = useState<CampaignParams>(() => {
     if (typeof window === 'undefined') return {};
@@ -463,6 +468,12 @@ export function PropertyLandingClient({
     '/vcard/$1'
   );
   const vcardUrl = vcardUrlFromApi || (tenant.vcard_slug ? `/vcard/${tenant.vcard_slug}` : '');
+  const vcardQrDataUrl = tenant.contact_ref_applied ? '' : String(tenant.vcard_qr_data_url || '').trim();
+  const generatedVcardQrDataUrl =
+    generatedVcardQr?.vcardUrl === vcardUrl ? generatedVcardQr.dataUrl : '';
+  const vcardQrGenerationFailed =
+    generatedVcardQr?.vcardUrl === vcardUrl ? generatedVcardQr.failed : false;
+  const effectiveVcardQrDataUrl = generatedVcardQrDataUrl || vcardQrDataUrl;
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
   const areaRangeLabel =
@@ -539,6 +550,33 @@ export function PropertyLandingClient({
       revealedSections[id] ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
     }`;
   const galleryCount = images.length;
+
+  useEffect(() => {
+    if (!vcardUrl) {
+      return;
+    }
+
+    let cancelled = false;
+    QRCode.toDataURL(vcardUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 360,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffffff',
+      },
+    })
+      .then((url) => {
+        if (!cancelled) setGeneratedVcardQr({ vcardUrl, dataUrl: url, failed: false });
+      })
+      .catch(() => {
+        if (!cancelled) setGeneratedVcardQr({ vcardUrl, dataUrl: '', failed: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vcardUrl]);
 
   const goPrevImage = () => {
     if (galleryCount <= 1 || galleryIndex === null) return;
@@ -941,7 +979,7 @@ export function PropertyLandingClient({
                 contentClassName="flex items-center gap-2.5"
               >
                 <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                <span>Consultar por WhatsApp</span>
+                <span>WhatsApp 24/7</span>
               </GlassButton>
             )}
             {tenant.email && (
@@ -1283,13 +1321,28 @@ export function PropertyLandingClient({
 
                 {vcardUrl && (
                   <div className="flex flex-col items-center text-center">
-                    <ContactQrCard
-                      value={vcardUrl}
+                    <a
                       href={vcardUrl}
-                      label="Guarda My Contacto"
-                      size={144}
-                      isLight={isLight}
-                    />
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Agenda Mis Datos"
+                      className="group inline-flex flex-col items-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 p-3 transition hover:border-cyan-300/65 hover:bg-cyan-300/15"
+                    >
+                      {effectiveVcardQrDataUrl ? (
+                        <img
+                          src={effectiveVcardQrDataUrl}
+                          alt="QR Agenda Mis Datos"
+                          className="h-36 w-36 rounded-lg bg-white p-1.5 object-contain shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+                        />
+                      ) : (
+                        <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-white p-2 text-xs text-zinc-500">
+                          {vcardQrGenerationFailed ? 'Agenda Mis Datos' : 'Generando QR...'}
+                        </div>
+                      )}
+                      <span className="mt-2 text-xs font-semibold tracking-[0.12em] text-cyan-700 dark:text-cyan-200">
+                        Agenda Mis Datos
+                      </span>
+                    </a>
                   </div>
                 )}
 
