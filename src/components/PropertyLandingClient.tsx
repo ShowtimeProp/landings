@@ -869,17 +869,18 @@ export function PropertyLandingClient({
           data-reveal-id="overview"
           className={`mx-auto max-w-4xl scroll-mt-24 px-4 py-12 sm:px-6 ${revealClass('overview')}`}
         >
-          <div className="mb-6 flex items-center gap-2">
+          <div className="mb-6 flex items-center gap-3">
             <GlassButton
               size="sm"
               type="button"
-              aria-label={`Tipo de transacción: ${opLabel}`}
-              contentClassName="uppercase tracking-[0.12em]"
-              className="cursor-default"
+              tabIndex={-1}
+              aria-label={`Tipo de operación: ${opLabel}`}
+              contentClassName="uppercase tracking-[0.14em] font-semibold"
+              className="pointer-events-none"
             >
-              {opLabel}
+              {opLabel || 'OPERACIÓN'}
             </GlassButton>
-            <PropertyBrochureModal property={property} tenantName={tenant.name} isLight={isLight} />
+            <PropertyBrochureModal property={property} isLight={isLight} />
           </div>
           <h1 className="text-3xl font-bold uppercase tracking-tight sm:text-4xl">
             {addressStr}

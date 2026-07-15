@@ -1,27 +1,26 @@
-import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-
-function cn(...inputs: (string | undefined | null | false)[]): string {
-  return inputs.filter(Boolean).join(' ');
-}
+import * as React from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
 const glassButtonVariants = cva(
-  'glass-button relative isolate cursor-pointer rounded-full transition-all',
+  'relative isolate all-unset cursor-pointer rounded-full transition-all',
   {
     variants: {
       size: {
         default: 'text-base font-medium',
-        sm: 'text-sm font-semibold',
+        sm: 'text-sm font-medium',
         lg: 'text-lg font-medium',
         icon: 'h-10 w-10',
       },
     },
-    defaultVariants: { size: 'default' },
-  },
-);
+    defaultVariants: {
+      size: 'default',
+    },
+  }
+)
 
 const glassButtonTextVariants = cva(
-  'glass-button-text relative block select-none tracking-tight',
+  'glass-button-text relative block select-none tracking-tighter',
   {
     variants: {
       size: {
@@ -31,28 +30,36 @@ const glassButtonTextVariants = cva(
         icon: 'flex h-10 w-10 items-center justify-center',
       },
     },
-    defaultVariants: { size: 'default' },
-  },
-);
+    defaultVariants: {
+      size: 'default',
+    },
+  }
+)
 
 export interface GlassButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof glassButtonVariants> {
-  contentClassName?: string;
+  contentClassName?: string
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, children, size, contentClassName, ...props }, ref) => (
-    <div className={cn('glass-button-wrap relative inline-flex rounded-full', className)}>
-      <button className={glassButtonVariants({ size })} ref={ref} {...props}>
-        <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
-          {children}
-        </span>
-      </button>
-      <div className="glass-button-shadow pointer-events-none rounded-full" aria-hidden="true" />
-    </div>
-  ),
-);
-GlassButton.displayName = 'GlassButton';
+  ({ className, children, size, contentClassName, ...props }, ref) => {
+    return (
+      <div className={cn('glass-button-wrap cursor-pointer rounded-full', className)}>
+        <button
+          className={cn('glass-button', glassButtonVariants({ size }))}
+          ref={ref}
+          {...props}
+        >
+          <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
+            {children}
+          </span>
+        </button>
+        <div className="glass-button-shadow rounded-full" aria-hidden="true" />
+      </div>
+    )
+  }
+)
+GlassButton.displayName = 'GlassButton'
 
-export { GlassButton, glassButtonVariants };
+export { GlassButton, glassButtonVariants }
