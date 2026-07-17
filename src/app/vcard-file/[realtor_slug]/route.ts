@@ -21,6 +21,7 @@ type VCardTenant = {
   martillero_registro?: string | null;
   vcard_slug?: string | null;
   vcard_url?: string | null;
+  smart_bio_url?: string | null;
 };
 
 type VCardApiResponse = {
@@ -30,6 +31,9 @@ type VCardApiResponse = {
   business_name?: string | null;
   portfolio_url?: string | null;
 };
+
+const LEGAL_DISCLAIMER =
+  'Todas las propiedades que figuran en mi perfil se encuentran a cargo del profesional matriculado de la oficina, la intermediación y la conclusión de las operaciones serán llevadas exclusivamente por él.';
 
 function normalizeRefCode(raw: string | null): string {
   return String(raw || '')
@@ -131,7 +135,13 @@ async function buildVcardText(data: VCardApiResponse): Promise<string> {
   const legalTitle = String(tenant.martillero_responsable || '').trim();
   const legalReg = String(tenant.martillero_registro || '').trim();
   if (legalTitle) lines.push(`TITLE:${escVcard(`Martillero Responsable: ${legalTitle}`)}`);
-  if (legalReg) lines.push(`NOTE:${escVcard(`Reg. ${legalReg}`)}`);
+  const legalProfessional = [legalTitle, legalReg ? `Reg. ${legalReg}` : '']
+    .filter(Boolean)
+    .join(' · ');
+  const legalNote = legalProfessional
+    ? `Martillero Responsable: ${legalProfessional}.\n\n${LEGAL_DISCLAIMER}`
+    : LEGAL_DISCLAIMER;
+  lines.push(`NOTE:${escVcard(legalNote)}`);
 
   const commercialPhone = normalizePhone(tenant.whatsapp || tenant.phone);
   const privatePhone = normalizePhone(tenant.phone);
@@ -151,8 +161,9 @@ async function buildVcardText(data: VCardApiResponse): Promise<string> {
     lines.push(`item3.URL;TYPE=WORK:${escVcard(data.portfolio_url)}`);
     lines.push(`item3.X-ABLabel:${escVcard('Portfolio')}`);
   }
-  if (tenant.vcard_url) {
-    lines.push(`item4.URL;TYPE=VCARD:${escVcard(tenant.vcard_url)}`);
+  const smartBioUrl = String(tenant.smart_bio_url || '').trim();
+  if (smartBioUrl) {
+    lines.push(`item4.URL;TYPE=WORK:${escVcard(smartBioUrl)}`);
     lines.push(`item4.X-ABLabel:${escVcard('E-Card')}`);
   }
 
