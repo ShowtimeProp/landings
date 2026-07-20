@@ -114,6 +114,7 @@ function buildSlotResolverRedirect(
 ): string {
   const safeCampaignKeys = [
     "ref",
+    "qr_slot",
     "source",
     "utm_source",
     "utm_medium",

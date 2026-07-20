@@ -7,6 +7,7 @@ export type CampaignParams = {
   utm_content?: string;
   utm_term?: string;
   property_id?: string;
+  qr_slot?: string;
   marketing_campaign_id?: string;
   variant_id?: string;
   fbclid?: string;
@@ -24,6 +25,7 @@ const CAMPAIGN_KEYS: (keyof CampaignParams)[] = [
   "utm_content",
   "utm_term",
   "property_id",
+  "qr_slot",
   "marketing_campaign_id",
   "variant_id",
   "fbclid",
@@ -41,6 +43,7 @@ const KEY_LIMITS: Record<keyof CampaignParams, number> = {
   utm_content: 160,
   utm_term: 120,
   property_id: 80,
+  qr_slot: 64,
   marketing_campaign_id: 80,
   variant_id: 80,
   fbclid: 200,
@@ -221,9 +224,12 @@ export function appendCampaignParamsToMessage(
   for (const key of CAMPAIGN_KEYS) {
     const value = normalized[key];
     if (!value) continue;
-    const token = `${key}=`;
+    // El backend conversacional ya entiende `slot`; `qr_slot` se usa solo en
+    // URLs para evitar el redirect legacy de ?slot= hacia /v/.
+    const outputKey = key === "qr_slot" ? "slot" : key;
+    const token = `${outputKey}=`;
     if (output.includes(token)) continue;
-    trackingParts.push(`${key}=${value}`);
+    trackingParts.push(`${outputKey}=${value}`);
   }
   if (!trackingParts.length) return output;
   return `${output}${output ? "\n\n" : ""}${trackingParts.join(" ")}`;

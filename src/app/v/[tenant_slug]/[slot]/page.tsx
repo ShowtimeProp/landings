@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import TenantGtm from "@/components/TenantGtm";
 import {
   appendCampaignParamsToUrl,
-  captureCurrentCampaignFromLocation,
+  campaignParamsFromSearchParams,
 } from "@/lib/campaign-tracking";
 
 const BACKEND_URL =
@@ -29,14 +29,22 @@ export default function SlotLoaderPage() {
 
     const run = async () => {
       try {
-        const campaign = captureCurrentCampaignFromLocation(tenantSlug);
+        // Un QR inteligente nunca hereda atribución guardada por el navegador.
+        // Solo conserva UTMs presentes en el escaneo actual; el REF autorizado
+        // llega dentro de redirect_url desde la configuración vigente del slot.
+        const incomingCampaign = campaignParamsFromSearchParams(
+          new URLSearchParams(window.location.search)
+        );
+        const campaign = { ...incomingCampaign };
+        delete campaign.ref;
         const visitorId =
           typeof crypto !== "undefined" && crypto.randomUUID
             ? crypto.randomUUID()
             : `qr-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
         const res = await fetch(
-          `${BACKEND_URL}/api/slots/resolve-by-slug?tenant_slug=${encodeURIComponent(tenantSlug)}&slot=${encodeURIComponent(slot)}`
+          `${BACKEND_URL}/api/slots/resolve-by-slug?tenant_slug=${encodeURIComponent(tenantSlug)}&slot=${encodeURIComponent(slot)}`,
+          { cache: "no-store", headers: { "Cache-Control": "no-cache" } }
         );
         const data = await res.json();
         setMarketing(data?.marketing || null);
@@ -53,6 +61,10 @@ export default function SlotLoaderPage() {
               visitor_id: visitorId,
               user_agent: navigator.userAgent,
               page_url: typeof window !== "undefined" ? window.location.href : "",
+              event_data: {
+                lead_routing_mode: data.lead_routing_mode || "pipeline",
+                selected_seller_id: data.selected_seller_id || null,
+              },
               ...campaign,
             }),
           }).catch(() => {});
