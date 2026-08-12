@@ -6,6 +6,7 @@ import {
   appendCampaignParamsToMessage,
   campaignParamsFromSearchParams,
 } from "@/lib/campaign-tracking";
+import { buildPropertyStructuredData } from "@/lib/seo/property-structured-data";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -266,8 +267,20 @@ export default async function PropertyLandingPage({
     ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(trackedWhatsappText)}`
     : "";
 
+  const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}/${property_slug}`;
+  const structuredData = buildPropertyStructuredData({
+    property,
+    tenant,
+    canonicalUrl,
+    portfolioUrl: `${LANDINGS_URL}/p/${tenant_slug}`,
+  });
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <TenantGtm marketing={tenant.marketing} />
       <PropertyLandingClient
         tenant={tenant}
