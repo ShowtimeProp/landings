@@ -124,3 +124,26 @@ export async function fetchPublicProperty(
   if (!data?.tenant?.slug || !data.property?.id) return null;
   return { tenant: data.tenant, property: data.property };
 }
+
+export interface IndexableTenant {
+  slug: string;
+  name: string;
+  updated_at?: string | null;
+}
+
+export async function fetchIndexableTenants(): Promise<IndexableTenant[]> {
+  const url = `${BACKEND_URL}/api/properties/public/indexable-tenants`;
+  try {
+    const response = await fetch(url, { next: { revalidate: 3600 }, headers: backendSsrHeaders() });
+    if (!response.ok) throw new BackendUnavailableError(response.status, url);
+    const data: unknown = await response.json();
+    if (!Array.isArray(data) || !data.every((row: unknown) =>
+      typeof row === 'object' && row !== null && 'slug' in row && typeof row.slug === 'string' && row.slug.trim() &&
+      'name' in row && typeof row.name === 'string'
+    )) throw new BackendUnavailableError(502, url);
+    return data as IndexableTenant[];
+  } catch (error) {
+    if (error instanceof BackendUnavailableError) throw error;
+    throw new BackendUnavailableError(0, url);
+  }
+}

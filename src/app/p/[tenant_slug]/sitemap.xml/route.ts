@@ -1,9 +1,8 @@
 /**
  * Sitemap por tenant: /p/{tenant_slug}/sitemap.xml
  *
- * Es por tenant y no global a propósito. Cada inmobiliaria manda el suyo a su
- * propia Search Console, que es donde le sirve; un sitemap global mezclaría
- * las propiedades de todos y ninguno podría reclamar las suyas.
+ * Cada inmobiliaria manda el suyo a su Search Console. El índice global enlaza
+ * estos sitemaps sólo con portfolio_seo_indexing activo, sin publicar todos los clientes.
  *
  * Incluye el portfolio, las fichas de propiedad y —si el blog está activo— el
  * índice y los artículos. Los artículos con noindex o con canonical apuntando

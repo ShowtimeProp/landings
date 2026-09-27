@@ -78,7 +78,7 @@ export function markdownFileUrlForPage(pathname: string): string | null {
  * recursos globales a medida que existan (llms.txt, api-catalog, sitemap
  * global): agregarlos en `SITE_LINKS`.
  */
-const SITE_LINKS: string[] = [];
+const SITE_LINKS: string[] = ['</sitemap.xml>; rel="sitemap"; type="application/xml"'];
 
 export function discoveryLinkHeader(pathname: string): string | null {
   const links = [...SITE_LINKS];
