@@ -410,6 +410,7 @@ export async function generateMetadata({
     description,
     alternates: {
       canonical: canonicalUrl,
+      types: { 'text/markdown': `${canonicalUrl}.md` },
     },
     openGraph: {
       title,
