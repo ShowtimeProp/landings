@@ -34,7 +34,7 @@ function latestUpdate(properties: PublicProperty[]): string | null {
   return times.length ? new Date(Math.max(...times)).toISOString() : null;
 }
 
-function summaryParts(property: PublicProperty): string[] {
+export function summaryParts(property: PublicProperty): string[] {
   return [
     operationLabel(property.operation_type),
     propertyTypeLabel(property.property_type),
@@ -144,7 +144,9 @@ export function buildSiteMarkdown(): string {
     '- Portfolio de una inmobiliaria: `/p/{inmobiliaria}` (Markdown: `/p/{inmobiliaria}.md`).',
     '- Ficha de una propiedad: `/p/{inmobiliaria}/{propiedad}` (Markdown: agregar `.md`).',
     '- Cualquiera de esas URLs devuelve Markdown si se pide con `Accept: text/markdown`.',
-    '- Cada inmobiliaria publica su sitemap en `/p/{inmobiliaria}/sitemap.xml`.\n',
+    '- Cada inmobiliaria publica su sitemap en `/p/{inmobiliaria}/sitemap.xml`.',
+    `- Servidor MCP para buscar propiedades: ${LANDINGS_URL}/mcp (server card: ` +
+      `${LANDINGS_URL}/.well-known/mcp/server-card.json).\n`,
     '## ShowtimeProp\n',
     `- Tours virtuales 360° para inmobiliarias y comercios: https://tours.showtimeprop.com/`,
     '- Contacto: info@showtimeprop.com\n',
