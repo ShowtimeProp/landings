@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { site } from "./_lib/site";
+import { showtimeOrganization } from "@/lib/seo/organization-structured-data";
+import { serializeJsonLd } from "@/lib/seo/serialize-json-ld";
 import { content } from "./_lib/content";
 import { Navbar } from "./_components/Navbar";
 import { Hero } from "./_components/Hero";
@@ -16,6 +19,7 @@ import { WhatsAppFloat } from "./_components/WhatsAppFloat";
 export const metadata: Metadata = {
   title: content.meta.title,
   description: content.meta.description,
+  alternates: { canonical: `${site.url}/` },
   openGraph: {
     title: content.meta.title,
     description: content.meta.description,
@@ -26,6 +30,7 @@ export const metadata: Metadata = {
 export default function ToursPage() {
   return (
     <main className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(showtimeOrganization) }} />
       <Navbar />
       <Hero />
       <DemoSection />
