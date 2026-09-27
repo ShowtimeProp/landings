@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildPortfolioStructuredData } from '@/lib/seo/portfolio-structured-data';
+import { serializeJsonLd } from '@/lib/seo/serialize-json-ld';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PortfolioWidgetGuard from '@/components/PortfolioWidgetGuard';
@@ -397,11 +399,10 @@ export async function generateMetadata({
     data.tenant.name;
   const agencyName = String(data.tenant.tenant_name || '').trim() || data.tenant.name;
   const title = `${advisorName} | ${agencyName}`;
-  const siteName = 'Atendemos 24/7 todo el año';
+  const siteName = agencyName;
   const description =
     String(data.tenant.portfolio_og_description || '').trim() || DEFAULT_PORTFOLIO_OG_DESCRIPTION;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}`;
-  const ogUrl = referralCode ? `${canonicalUrl}?ref=${encodeURIComponent(referralCode)}` : canonicalUrl;
   const ogImage = pickPortfolioImage(data);
 
   return {
@@ -415,7 +416,7 @@ export async function generateMetadata({
       description,
       siteName,
       type: 'website',
-      url: ogUrl,
+      url: canonicalUrl,
       images: ogImage
         ? [
             {
@@ -629,6 +630,9 @@ export default async function PortfolioPage({
 
   return (
     <div className={`min-h-screen overflow-x-hidden ${rootClass}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildPortfolioStructuredData({
+        tenant, properties, canonicalUrl: `${LANDINGS_URL}/p/${tenant.slug}`,
+      })) }} />
       <TenantGtm marketing={tenant.marketing} />
       <PortfolioTrackingBridge tenantId={tenant.id} tenantSlug={tenant.slug} />
       <PortfolioWidgetGuard />

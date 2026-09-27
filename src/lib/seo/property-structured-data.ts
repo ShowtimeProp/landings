@@ -36,10 +36,17 @@ export type StructuredDataProperty = {
 
 export type StructuredDataTenant = {
   name?: string | null;
+  tenant_name?: string | null;
   realtor_name?: string | null;
   phone?: string | null;
   email?: string | null;
   logo_url?: string | null;
+  profile_photo_url?: string | null;
+  portfolio_bio?: string | null;
+  social_links?: Record<string, string | null> | null;
+  address?: AddressLike;
+  martillero_responsable?: string | null;
+  martillero_registro?: string | null;
 };
 
 function text(value: unknown): string {
@@ -69,8 +76,40 @@ function buildPostalAddress(address: AddressLike): Record<string, string> | null
   if (streetAddress) postal.streetAddress = streetAddress;
   if (locality) postal.addressLocality = locality;
   if (region) postal.addressRegion = region;
-  postal.addressCountry = country || 'AR';
+  if (country) postal.addressCountry = country;
   return postal;
+}
+
+export function buildRealEstateAgent(tenant: StructuredDataTenant, portfolioUrl: string): Record<string, unknown> {
+  const agent: Record<string, unknown> = {
+    '@type': 'RealEstateAgent',
+    '@id': `${portfolioUrl}#agent`,
+    url: portfolioUrl,
+  };
+  const fields = {
+    name: text(tenant.tenant_name) || text(tenant.name),
+    logo: text(tenant.logo_url),
+    image: text(tenant.profile_photo_url),
+    telephone: text(tenant.phone),
+    email: text(tenant.email),
+    description: text(tenant.portfolio_bio),
+  };
+  for (const [key, value] of Object.entries(fields)) {
+    if (value) agent[key] = value;
+  }
+  const sameAs = Object.values(tenant.social_links || {}).flatMap((value) => {
+    try {
+      const url = new URL(text(value));
+      return ['http:', 'https:'].includes(url.protocol) ? [url.toString()] : [];
+    } catch { return []; }
+  });
+  if (sameAs.length) agent.sameAs = [...new Set(sameAs)];
+  const address = buildPostalAddress(tenant.address);
+  if (address) agent.address = address;
+  const name = text(tenant.martillero_responsable);
+  const identifier = text(tenant.martillero_registro);
+  if (name || identifier) agent.employee = { '@type': 'Person', ...(name ? { name } : {}), ...(identifier ? { identifier } : {}) };
+  return agent;
 }
 
 /**
@@ -103,18 +142,8 @@ export function buildPropertyStructuredData({
 }): Record<string, unknown> {
   const images = (property.images || []).map(imageUrl).filter(Boolean).slice(0, 10);
   const postalAddress = buildPostalAddress(property.address);
-  const agencyName =
-    text(tenant.name) || text(tenant.realtor_name) || 'Inmobiliaria';
-
-  const seller: Record<string, unknown> = {
-    '@type': 'RealEstateAgent',
-    name: agencyName,
-    url: portfolioUrl,
-  };
-  if (text(tenant.logo_url)) seller.logo = text(tenant.logo_url);
-  if (text(tenant.phone)) seller.telephone = text(tenant.phone);
-  if (text(tenant.email)) seller.email = text(tenant.email);
-  if (postalAddress) seller.areaServed = postalAddress.addressLocality || undefined;
+  const seller = buildRealEstateAgent(tenant, portfolioUrl);
+  const agencyName = seller.name;
 
   const accommodation: Record<string, unknown> = {
     '@type': accommodationType(property.property_type),
