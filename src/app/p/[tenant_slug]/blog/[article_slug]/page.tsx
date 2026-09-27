@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from 'next';
+import { serializeJsonLd } from '@/lib/seo/serialize-json-ld';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -223,7 +224,7 @@ export default async function BlogArticlePage({
 
   return (
     <main className={`min-h-screen ${rootClass}`}>
-      {article.schema_org ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(article.schema_org) }} /> : null}
+      {article.schema_org ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(article.schema_org) }} /> : null}
       <header className={`border-b backdrop-blur ${headerClass}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href={blogHref} className="flex min-w-0 items-center gap-3">

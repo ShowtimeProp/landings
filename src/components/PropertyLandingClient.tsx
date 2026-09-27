@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
+import { cleanDescription } from '@/lib/text';
 import { createElement } from 'react';
 import Script from 'next/script';
 import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
@@ -476,6 +477,8 @@ export function PropertyLandingClient({
   const vcardQrGenerationFailed =
     generatedVcardQr?.vcardUrl === vcardUrl ? generatedVcardQr.failed : false;
   const effectiveVcardQrDataUrl = generatedVcardQrDataUrl || vcardQrDataUrl;
+  const description = cleanDescription(property.description);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const areaSqsMin = typeof property.area_sqm_min === 'number' ? property.area_sqm_min : null;
   const areaSqsMax = typeof property.area_sqm_max === 'number' ? property.area_sqm_max : null;
   const areaRangeLabel =
@@ -969,6 +972,35 @@ export function PropertyLandingClient({
               />
             )}
           </div>
+
+          {description && (
+            <section className="mt-10" aria-labelledby="property-description-title">
+              <h2 id="property-description-title" className="mb-4 text-2xl font-bold">Sobre esta propiedad</h2>
+              <div
+                id="property-description"
+                className={`space-y-4 text-base leading-relaxed ${description.length > 700 && !descriptionExpanded ? 'line-clamp-6' : ''}`}
+              >
+                {description.split(/\n\s*\n/).map((paragraph, index) => (
+                  <p key={index}>
+                    {paragraph.split('\n').map((line, lineIndex) => (
+                      <Fragment key={lineIndex}>{lineIndex > 0 && <br />}{line}</Fragment>
+                    ))}
+                  </p>
+                ))}
+              </div>
+              {description.length > 700 && (
+                <button
+                  type="button"
+                  className="mt-3 rounded text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+                  aria-expanded={descriptionExpanded}
+                  aria-controls="property-description"
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                >
+                  {descriptionExpanded ? 'Ver menos' : 'Ver más'}
+                </button>
+              )}
+            </section>
+          )}
 
           <div className="mt-12 flex flex-wrap items-center gap-4">
             {trackedWhatsappUrl && (

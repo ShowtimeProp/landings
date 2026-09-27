@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { PropertyLandingClient } from "@/components/PropertyLandingClient";
 import TenantGtm from "@/components/TenantGtm";
 import {
@@ -7,6 +7,8 @@ import {
   campaignParamsFromSearchParams,
 } from "@/lib/campaign-tracking";
 import { buildPropertyStructuredData } from "@/lib/seo/property-structured-data";
+import { serializeJsonLd } from "@/lib/seo/serialize-json-ld";
+import { cleanDescription, cleanText } from "@/lib/text";
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from "@/lib/backend";
 
 const BACKEND_URL =
@@ -53,6 +55,8 @@ type PublicProperty = {
   property_code?: string | null;
   slug?: string | null;
   description?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   tour_virtual_url?: string | null;
   images?: (string | { url?: string })[];
   address?: Record<string, unknown> | null;
@@ -109,6 +113,32 @@ function firstSearchValue(value: string | string[] | undefined): string {
   return value || "";
 }
 
+function withSearchParams(url: string, params: Record<string, string | string[] | undefined>): string {
+  const target = new URL(url, LANDINGS_URL);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) target.searchParams.set(key, firstSearchValue(value));
+  }
+  return target.toString();
+}
+
+function propertyMetaDescription(property: PublicProperty): string | undefined {
+  const meta = cleanDescription(property.meta_description);
+  if (meta) return meta;
+  const description = cleanDescription(property.description)?.replace(/\s+/g, ' ');
+  if (description) {
+    if (description.length <= 155) return description;
+    const cut = description.lastIndexOf(' ', 155);
+    return `${description.slice(0, cut > 0 ? cut : 155)}…`;
+  }
+  const operation = cleanText(property.operation_type);
+  const labels: Record<string, string> = { sale: 'Venta', rent: 'Alquiler', rent_short_term: 'Alquiler temporario' };
+  const city = cleanText(property.address?.city) || cleanText(property.address?.locality);
+  const location = [operation ? labels[operation] || operation : null, cleanText(property.property_type), city ? `en ${city}` : null].filter(Boolean).join(' ');
+  const details = [property.area_sqm != null ? `${property.area_sqm} m²` : null, property.ambientes != null ? `${property.ambientes} ambientes` : null].filter(Boolean).join(', ');
+  const parts = [location, details, cleanText(property.tour_virtual_url) ? 'Tour virtual 360°' : null].filter(Boolean);
+  return parts.length ? `${parts.join('. ')}.` : undefined;
+}
+
 function buildSlotResolverRedirect(
   tenantSlug: string,
   slot: string,
@@ -142,7 +172,8 @@ function buildSlotResolverRedirect(
 async function fetchPublicProperty(
   tenantSlug: string,
   propertySlug: string,
-  referralCode?: string | null
+  referralCode?: string | null,
+  searchParams: Record<string, string | string[] | undefined> = {}
 ): Promise<ApiResponse | null> {
   const buildUrl = (ref?: string | null) => {
     const params = new URLSearchParams({
@@ -172,7 +203,11 @@ async function fetchPublicProperty(
   }
   if (res.status === 301 || res.status === 302) {
     const loc = res.headers.get("location");
-    if (loc) redirect(loc);
+    if (loc) {
+      const destination = withSearchParams(loc, searchParams);
+      if (res.status === 301) permanentRedirect(destination);
+      redirect(destination);
+    }
   }
   if (isBackendUnavailable(res.status)) throw new BackendUnavailableError(res.status, res.url);
   if (!res.ok) return null;
@@ -183,11 +218,13 @@ async function fetchPublicProperty(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant_slug: string; property_slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { tenant_slug, property_slug } = await params;
-  const data = await fetchPublicProperty(tenant_slug, property_slug);
+  const data = await fetchPublicProperty(tenant_slug, property_slug, null, await searchParams);
   if (!data) {
     return {
       title: "Propiedad no encontrada | ShowtimeProp",
@@ -195,11 +232,9 @@ export async function generateMetadata({
     };
   }
 
-  const title = `${data.property.name} | ${data.tenant.name}`;
-  const description =
-    (data.property.description || "").slice(0, 155) ||
-    "Tour virtual y detalles de la propiedad.";
-  const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}/${property_slug}`;
+  const title = cleanText(data.property.meta_title) || `${data.property.name} | ${data.tenant.name}`;
+  const description = propertyMetaDescription(data.property);
+  const canonicalUrl = `${LANDINGS_URL}/p/${data.tenant.slug}/${data.property.slug || property_slug}`;
   const ogImage = pickPrimaryImage(data.property);
 
   return {
@@ -217,8 +252,6 @@ export async function generateMetadata({
         ? [
             {
               url: ogImage,
-              width: 1200,
-              height: 630,
               alt: title,
             },
           ]
@@ -256,10 +289,14 @@ export default async function PropertyLandingPage({
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
-  const data = await fetchPublicProperty(tenant_slug, property_slug, referralCode || null);
+  const data = await fetchPublicProperty(tenant_slug, property_slug, referralCode || null, resolvedSearchParams);
   if (!data) notFound();
 
   const { tenant, property } = data;
+  const canonicalUrl = `${LANDINGS_URL}/p/${tenant.slug}/${property.slug || property_slug}`;
+  if (property_slug === property.id && property.slug && property.slug !== property_slug) {
+    permanentRedirect(withSearchParams(canonicalUrl, resolvedSearchParams));
+  }
   const whatsappPhone = tenant.whatsapp ? sanitizePhoneToWa(tenant.whatsapp) : "";
   const whatsappText = buildWhatsappMessage(property);
   const campaignSearchParams = new URLSearchParams();
@@ -277,9 +314,8 @@ export default async function PropertyLandingPage({
     ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(trackedWhatsappText)}`
     : "";
 
-  const canonicalUrl = `${LANDINGS_URL}/p/${tenant_slug}/${property_slug}`;
   const structuredData = buildPropertyStructuredData({
-    property,
+    property: { ...property, description: cleanDescription(property.description) },
     tenant,
     canonicalUrl,
     portfolioUrl: `${LANDINGS_URL}/p/${tenant_slug}`,
@@ -289,7 +325,7 @@ export default async function PropertyLandingPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
       <TenantGtm marketing={tenant.marketing} />
       <PropertyLandingClient
