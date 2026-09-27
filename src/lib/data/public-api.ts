@@ -34,6 +34,8 @@ export interface PublicTenant {
   martillero_responsable?: string | null;
   martillero_registro?: string | null;
   portfolio_bio?: string | null;
+  /** Opt-in de indexación (AE-002): gobierna búsqueda MCP, llms.txt global y sitemap índice. */
+  seo_indexing?: boolean | null;
 }
 
 export interface PublicProperty {
@@ -123,6 +125,55 @@ export async function fetchPublicProperty(
   const data = (await res.json()) as Partial<PublicPropertyDetail>;
   if (!data?.tenant?.slug || !data.property?.id) return null;
   return { tenant: data.tenant, property: data.property };
+}
+
+export interface PublicSearchItem {
+  id: string;
+  name: string;
+  url: string;
+  markdown_url: string;
+  agency_slug: string;
+  agency_name: string;
+  operation_type?: string | null;
+  property_type?: string | null;
+  price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  price_on_request?: boolean;
+  currency?: string | null;
+  area_sqm?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  ambientes?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  city?: string | null;
+  street?: string | null;
+  apto_credito?: boolean | null;
+  has_virtual_tour?: boolean;
+  image?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PublicSearchResult {
+  total: number;
+  offset: number;
+  limit: number;
+  items: PublicSearchItem[];
+}
+
+export type PublicSearchParams = Record<string, string | number | boolean | undefined>;
+
+/** Búsqueda entre inmobiliarias con opt-in (AE-011). */
+export async function searchPublicProperties(params: PublicSearchParams): Promise<PublicSearchResult> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  const url = `${BACKEND_URL}/api/properties/public/search?${query.toString()}`;
+  const res = await getJson(url);
+  if (!res.ok) throw new BackendUnavailableError(res.status, url);
+  return (await res.json()) as PublicSearchResult;
 }
 
 export interface IndexableTenant {
