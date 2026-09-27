@@ -1,3 +1,4 @@
+import type { PublicPropertyFeatures } from '@/lib/data/public-api';
 /**
  * Datos estructurados schema.org para las fichas de propiedad.
  *
@@ -15,7 +16,7 @@
 
 type AddressLike = Record<string, unknown> | null | undefined;
 
-export type StructuredDataProperty = {
+export type StructuredDataProperty = PublicPropertyFeatures & {
   name: string;
   slug?: string | null;
   description?: string | null;
@@ -29,6 +30,16 @@ export type StructuredDataProperty = {
   ambientes?: number | null;
   area_sqm?: number | null;
   price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  total_units?: number | null;
+  area_sqm_min?: number | null;
+  area_sqm_max?: number | null;
+  expenses_amount?: number | null;
+  expenses_currency?: string | null;
+  video_url?: string | null;
+  tour_virtual_url?: string | null;
+  floor_plan_url?: string | null;
   currency?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -129,6 +140,29 @@ function isRental(operationType?: string | null): boolean {
   return /alquiler|renta|arriendo/i.test(text(operationType));
 }
 
+
+function validDate(value: string | null | undefined): string | null {
+  return value && !Number.isNaN(Date.parse(value)) ? value : null;
+}
+
+function videoLocation(value: string | null | undefined): Record<string, string> | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'youtube-nocookie.com') {
+      const id = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v') || url.pathname.split('/').pop();
+      return id && /^[\w-]+$/.test(id) ? { embedUrl: `https://www.youtube.com/embed/${id}` } : null;
+    }
+    if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+      const id = url.pathname.split('/').pop();
+      return id && /^\d+$/.test(id) ? { embedUrl: `https://player.vimeo.com/video/${id}` } : null;
+    }
+    return { [host === 'iframe.mediadelivery.net' ? 'embedUrl' : 'contentUrl']: value };
+  } catch { return null; }
+}
+
 export function buildPropertyStructuredData({
   property,
   tenant,
@@ -150,6 +184,13 @@ export function buildPropertyStructuredData({
     name: property.name,
   };
   if (postalAddress) accommodation.address = postalAddress;
+  const amenities = (property.amenities || []).map(text).filter(Boolean);
+  if (amenities.length) accommodation.amenityFeature = amenities.map((name) => ({
+    '@type': 'LocationFeatureSpecification', name, value: true,
+  }));
+  if (text(property.floor_plan_url)) accommodation.accommodationFloorPlan = {
+    '@type': 'FloorPlan', image: text(property.floor_plan_url),
+  };
   if (typeof property.area_sqm === 'number' && property.area_sqm > 0) {
     accommodation.floorSize = {
       '@type': 'QuantitativeValue',
@@ -186,16 +227,39 @@ export function buildPropertyStructuredData({
     listing.description = text(property.description).slice(0, 5000);
   }
   if (images.length) listing.image = images;
+  const createdAt = validDate(property.created_at);
+  const updatedAt = validDate(property.updated_at);
+  if (createdAt) listing.datePosted = createdAt;
+  if (updatedAt) listing.dateModified = updatedAt;
+  const subjects: Record<string, unknown>[] = [];
+  const video = videoLocation(property.video_url);
+  if (video && createdAt && images[0]) subjects.push({
+    '@type': 'VideoObject', name: property.name, ...video, thumbnailUrl: images[0], uploadDate: createdAt,
+  });
+  if (text(property.tour_virtual_url)) subjects.push({
+    '@type': 'WebPage', name: 'Tour virtual 360°', url: text(property.tour_virtual_url),
+  });
+  if (subjects.length) listing.subjectOf = subjects;
 
   // Sin precio publicado no se declara oferta: una Offer sin price es inválida,
   // e inventar un 0 diría que la propiedad es gratis.
   const hasPrice =
     !property.price_on_request && typeof property.price === 'number' && property.price > 0;
-  if (hasPrice) {
+  const isProject = /^(project|proyecto|desarrollo|inversion_pozo|inversion_en_pozo)$/i.test(text(property.property_type));
+  const hasRange = isProject && !property.price_on_request && text(property.currency) &&
+    typeof property.price_min === 'number' && property.price_min > 0 &&
+    typeof property.price_max === 'number' && property.price_max >= property.price_min;
+  if (hasRange) {
+    listing.offers = {
+      '@type': 'AggregateOffer', lowPrice: property.price_min, highPrice: property.price_max,
+      priceCurrency: text(property.currency), url: canonicalUrl, seller,
+      ...(typeof property.total_units === 'number' && property.total_units > 0 ? { offerCount: property.total_units } : {}),
+    };
+  } else if (hasPrice && text(property.currency)) {
     const offer: Record<string, unknown> = {
       '@type': 'Offer',
       price: property.price,
-      priceCurrency: text(property.currency) || 'USD',
+      priceCurrency: text(property.currency),
       availability: 'https://schema.org/InStock',
       url: canonicalUrl,
       seller,

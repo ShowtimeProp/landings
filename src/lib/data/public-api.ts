@@ -38,7 +38,16 @@ export interface PublicTenant {
   seo_indexing?: boolean | null;
 }
 
-export interface PublicProperty {
+export interface PublicPropertyFeatures {
+  amenities?: string[] | null;
+  apto_credito?: boolean | null;
+  financiacion_propia?: boolean | null;
+  fecha_finalizacion_obra?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PublicProperty extends PublicPropertyFeatures {
   id: string;
   name: string;
   slug?: string | null;

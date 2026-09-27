@@ -1,7 +1,9 @@
 'use client';
 
+import type { PublicPropertyFeatures } from '@/lib/data/public-api';
 import { Fragment, useState, useEffect } from 'react';
 import { cleanDescription } from '@/lib/text';
+import { buildPropertyQuestions, formatDeliveryDate } from '@/lib/seo/property-questions';
 import { createElement } from 'react';
 import Script from 'next/script';
 import LeadPortalAuthClient from '@/components/LeadPortalAuthClient';
@@ -29,7 +31,7 @@ const TOKEN_KEY = 'lead_portal_token';
 const AUTH_EVENT = 'lead-portal-auth-changed';
 const FAVORITES_EVENT = 'lead-portal-favorites-changed';
 
-type Property = {
+type Property = PublicPropertyFeatures & {
   id: string;
   name: string;
   slug?: string | null;
@@ -46,6 +48,7 @@ type Property = {
   ambientes?: number | null;
   area_sqm?: number | null;
   expenses_amount?: number | null;
+  expenses_currency?: string | null;
   area_sqm_min?: number | null;
   area_sqm_max?: number | null;
   total_units?: number | null;
@@ -236,6 +239,9 @@ export function PropertyLandingClient({
     return campaignParamsFromSearchParams(new URLSearchParams(window.location.search));
   });
   const trackedWhatsappUrl = buildTrackedWhatsappUrl(whatsappUrl, campaign);
+  const questions = buildPropertyQuestions(property, trackedWhatsappUrl);
+  const deliveryDate = formatDeliveryDate(property.fecha_finalizacion_obra);
+  const amenities = (property.amenities || []).filter((value) => value.trim());
   const campaignQueryString = campaignParamsToQueryString(campaign);
   const portfolioHref = (() => {
     const qs = campaignQueryString.trim();
@@ -999,6 +1005,31 @@ export function PropertyLandingClient({
                   {descriptionExpanded ? 'Ver menos' : 'Ver más'}
                 </button>
               )}
+            </section>
+          )}
+
+          {(amenities.length > 0 || property.apto_credito === true || property.financiacion_propia === true || deliveryDate) && (
+            <section className="mt-10" aria-labelledby="property-features-title">
+              <h2 id="property-features-title" className="mb-4 text-2xl font-bold">Características</h2>
+              {amenities.length > 0 && <ul className="mb-4 list-inside list-disc space-y-1">{amenities.map((amenity) => <li key={amenity}>{amenity}</li>)}</ul>}
+              <div className="flex flex-wrap gap-2">
+                {property.apto_credito === true && <span className={`rounded-full border px-3 py-1 text-sm ${pillClass}`}>Apto crédito</span>}
+                {property.financiacion_propia === true && <span className={`rounded-full border px-3 py-1 text-sm ${pillClass}`}>Financiación propia</span>}
+                {deliveryDate && <span className={`rounded-full border px-3 py-1 text-sm ${pillClass}`}>Entrega estimada: {deliveryDate}</span>}
+              </div>
+            </section>
+          )}
+          {questions.length > 0 && (
+            <section className="mt-10" aria-labelledby="property-questions-title">
+              <h2 id="property-questions-title" className="mb-4 text-2xl font-bold">Preguntas frecuentes</h2>
+              <div className="space-y-3">
+                {questions.map(({ question, answer, href, linkLabel }) => (
+                  <details key={question} className={`rounded-xl border p-4 ${pillClass}`}>
+                    <summary className="cursor-pointer font-semibold">{question}</summary>
+                    <p className="mt-3 leading-relaxed">{answer}{href && <> <a href={href} className="underline underline-offset-4" target="_blank" rel="noreferrer" onClick={href === trackedWhatsappUrl ? trackWhatsappClick : undefined}>{linkLabel}</a></>}</p>
+                  </details>
+                ))}
+              </div>
             </section>
           )}
 

@@ -1,3 +1,4 @@
+import type { PublicPropertyFeatures } from '@/lib/data/public-api';
 import type { Metadata } from "next";
 import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { PropertyLandingClient } from "@/components/PropertyLandingClient";
@@ -49,7 +50,7 @@ type PublicTenant = {
   } | null;
 };
 
-type PublicProperty = {
+type PublicProperty = PublicPropertyFeatures & {
   id: string;
   name: string;
   property_code?: string | null;
@@ -68,6 +69,7 @@ type PublicProperty = {
   ambientes?: number | null;
   area_sqm?: number | null;
   expenses_amount?: number | null;
+  expenses_currency?: string | null;
   area_sqm_min?: number | null;
   area_sqm_max?: number | null;
   total_units?: number | null;
