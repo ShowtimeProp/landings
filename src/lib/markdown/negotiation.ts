@@ -81,6 +81,7 @@ export function markdownFileUrlForPage(pathname: string): string | null {
 const SITE_LINKS: string[] = [
   '</sitemap.xml>; rel="sitemap"; type="application/xml"',
   '</llms.txt>; rel="describedby"; type="text/plain"',
+  '</.well-known/api-catalog>; rel="api-catalog"',
 ];
 
 export function discoveryLinkHeader(pathname: string): string | null {
