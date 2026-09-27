@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import QRCode from 'qrcode';
 import OwnerCaptureFunnelClient from '@/components/OwnerCaptureFunnelClient';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -73,6 +74,7 @@ async function fetchPortfolio(
   if (referralCode) params.set('ref', referralCode);
   const res = await fetch(`${BACKEND_URL}/api/properties/public/portfolio?${params.toString()}`, {
     next: { revalidate: 60 },
+    headers: backendSsrHeaders(),
   });
   if (!res.ok) return null;
   const data = (await res.json()) as PortfolioResponse;

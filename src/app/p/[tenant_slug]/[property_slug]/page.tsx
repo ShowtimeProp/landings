@@ -7,6 +7,7 @@ import {
   campaignParamsFromSearchParams,
 } from "@/lib/campaign-tracking";
 import { buildPropertyStructuredData } from "@/lib/seo/property-structured-data";
+import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from "@/lib/backend";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -153,18 +154,27 @@ async function fetchPublicProperty(
     }
     return `${BACKEND_URL}/api/properties/public/by-slug?${params.toString()}`;
   };
-  let res = await fetch(buildUrl(referralCode), { next: { revalidate: 60 }, redirect: "manual" });
+  let res = await fetch(buildUrl(referralCode), {
+    next: { revalidate: 60 },
+    redirect: "manual",
+    headers: backendSsrHeaders(),
+  });
   if (!res.ok && referralCode && res.status !== 301 && res.status !== 302) {
     console.warn(
       `Public property fetch failed with referral (${res.status}); retrying without referral.`,
       { tenantSlug, propertySlug }
     );
-    res = await fetch(buildUrl(null), { next: { revalidate: 60 }, redirect: "manual" });
+    res = await fetch(buildUrl(null), {
+      next: { revalidate: 60 },
+      redirect: "manual",
+      headers: backendSsrHeaders(),
+    });
   }
   if (res.status === 301 || res.status === 302) {
     const loc = res.headers.get("location");
     if (loc) redirect(loc);
   }
+  if (isBackendUnavailable(res.status)) throw new BackendUnavailableError(res.status, res.url);
   if (!res.ok) return null;
   const data = (await res.json()) as ApiResponse;
   if (!data?.tenant?.slug || !data?.property?.id) return null;

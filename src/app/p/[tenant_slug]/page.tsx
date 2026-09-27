@@ -13,6 +13,7 @@ import TenantGtm from '@/components/TenantGtm';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { TenantSocialLinks } from '@/components/social-links';
 import QRCode from 'qrcode';
+import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -201,7 +202,8 @@ async function fetchPortfolio(
     params.set('ref', referralCode);
   }
   const url = `${BACKEND_URL}/api/properties/public/portfolio?${params.toString()}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const res = await fetch(url, { next: { revalidate: 60 }, headers: backendSsrHeaders() });
+  if (isBackendUnavailable(res.status)) throw new BackendUnavailableError(res.status, url);
   if (!res.ok) return null;
   const data = (await res.json()) as ApiResponse;
   if (!data?.tenant?.slug || !Array.isArray(data?.properties)) return null;
@@ -210,7 +212,7 @@ async function fetchPortfolio(
 
 async function fetchPlaceReviews(tenantSlug: string): Promise<PlaceReviewsResponse | null> {
   const url = `${BACKEND_URL}/api/properties/public/place-reviews?tenant_slug=${encodeURIComponent(tenantSlug)}`;
-  const res = await fetch(url, { next: { revalidate: 600 } });
+  const res = await fetch(url, { next: { revalidate: 600 }, headers: backendSsrHeaders() });
   if (!res.ok) return null;
   const data = (await res.json()) as PlaceReviewsResponse;
   if (!data || typeof data !== 'object') return null;
@@ -222,7 +224,7 @@ async function fetchPublicBlogSummary(tenantSlug: string, referralCode?: string 
   if (referralCode) params.set('ref', referralCode);
   const suffix = params.toString() ? `?${params.toString()}` : '';
   const url = `${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog${suffix}`;
-  const res = await fetch(url, { next: { revalidate: 120 } });
+  const res = await fetch(url, { next: { revalidate: 120 }, headers: backendSsrHeaders() });
   if (!res.ok) return null;
   return (await res.json()) as PublicBlogSummary;
 }

@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BlogLeadForm from '@/components/BlogLeadForm';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
+import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -136,7 +137,8 @@ async function fetchArticle(tenantSlug: string, articleSlug: string, refCode?: s
   const params = new URLSearchParams();
   if (refCode) params.set('ref', refCode);
   const suffix = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog/${encodeURIComponent(articleSlug)}${suffix}`, { next: { revalidate: 120 } });
+  const response = await fetch(`${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog/${encodeURIComponent(articleSlug)}${suffix}`, { next: { revalidate: 120 }, headers: backendSsrHeaders() });
+  if (isBackendUnavailable(response.status)) throw new BackendUnavailableError(response.status, response.url);
   if (!response.ok) return null;
   return (await response.json()) as BlogDetailResponse;
 }

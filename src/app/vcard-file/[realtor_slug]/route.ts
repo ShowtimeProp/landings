@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -210,7 +211,7 @@ export async function GET(
     apiParams.set('ref', referralCode);
   }
   const apiUrl = `${BACKEND_URL}/api/properties/public/vcard?${apiParams.toString()}`;
-  const response = await fetch(apiUrl, { cache: 'no-store' });
+  const response = await fetch(apiUrl, { cache: 'no-store', headers: backendSsrHeaders() });
   if (!response.ok) {
     return new Response('Contacto no encontrado', { status: 404 });
   }

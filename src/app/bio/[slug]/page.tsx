@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import SmartBioClient from './smart-bio-client';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 
 async function fetchSmartBio(slug: string) {
   const res = await fetch(`${BACKEND_URL}/api/smart-bios/public/${encodeURIComponent(slug)}`, {
     next: { revalidate: 30 },
+    headers: backendSsrHeaders(),
   });
   if (!res.ok) return null;
   return res.json();
@@ -15,6 +17,7 @@ async function fetchReviews(tenantSlug?: string | null) {
   if (!tenantSlug) return null;
   const res = await fetch(`${BACKEND_URL}/api/properties/public/place-reviews?tenant_slug=${encodeURIComponent(tenantSlug)}`, {
     next: { revalidate: 600 },
+    headers: backendSsrHeaders(),
   });
   if (!res.ok) return null;
   return res.json();

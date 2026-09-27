@@ -11,6 +11,8 @@
  * página le dice que no indexe es contradecirse.
  */
 
+import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
+
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL =
@@ -52,19 +54,46 @@ function isoDate(value: unknown): string | undefined {
 }
 
 async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
+  let res: Response;
   try {
-    const res = await fetch(url, { next: { revalidate } });
-    if (!res.ok) return null;
+    res = await fetch(url, { next: { revalidate }, headers: backendSsrHeaders() });
+  } catch {
+    throw new BackendUnavailableError(0, url);
+  }
+  if (isBackendUnavailable(res.status)) throw new BackendUnavailableError(res.status, url);
+  if (!res.ok) return null;
+  try {
     return (await res.json()) as Record<string, unknown>;
   } catch {
     return null;
   }
 }
 
+// Backend caído o con rate limit: 503 para que el crawler reintente, en vez
+// de un 404 que le diría que el sitemap no existe.
+function unavailable(): Response {
+  return new Response('Service Unavailable', {
+    status: 503,
+    headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' },
+  });
+}
+
 export async function GET(
+  request: Request,
+  context: { params: Promise<{ tenant_slug: string }> }
+) {
+  try {
+    return await buildSitemapResponse(request, context);
+  } catch (error) {
+    if (error instanceof BackendUnavailableError) return unavailable();
+    throw error;
+  }
+}
+
+async function buildSitemapResponse(
   _request: Request,
   { params }: { params: Promise<{ tenant_slug: string }> }
-) {
+): Promise<Response> {
   const { tenant_slug } = await params;
   const base = `${LANDINGS_URL}/p/${encodeURIComponent(tenant_slug)}`;
 

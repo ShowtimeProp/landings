@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import MatchLandingClient from '@/components/MatchLandingClient';
 import type { MatchLandingPayload } from '@/components/MatchLandingClient';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -17,7 +18,7 @@ async function fetchMatchLanding(landingToken: string, refCode?: string): Promis
   if (refCode) query.set('ref', refCode);
   const suffix = query.toString() ? `?${query.toString()}` : '';
   const url = `${BACKEND_URL}/api/match/public/landing/${encodeURIComponent(landingToken)}${suffix}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const res = await fetch(url, { next: { revalidate: 60 }, headers: backendSsrHeaders() });
   if (!res.ok) return null;
   const data = (await res.json()) as MatchLandingPayload;
   if (!data) return null;

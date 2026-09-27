@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -35,6 +36,7 @@ async function fetchListing(id: string): Promise<Listing | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/mls/public/listings/${encodeURIComponent(id)}`, {
       next: { revalidate: 600 },
+      headers: backendSsrHeaders(),
     });
     if (!res.ok) return null;
     return (await res.json()) as Listing;

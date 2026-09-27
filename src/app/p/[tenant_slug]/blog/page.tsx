@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
+import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -100,7 +101,8 @@ async function fetchBlogIndex(tenantSlug: string, refCode?: string | null): Prom
   const params = new URLSearchParams();
   if (refCode) params.set('ref', refCode);
   const suffix = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog${suffix}`, { next: { revalidate: 120 } });
+  const response = await fetch(`${BACKEND_URL}/api/blogs/public/tenants/${encodeURIComponent(tenantSlug)}/blog${suffix}`, { next: { revalidate: 120 }, headers: backendSsrHeaders() });
+  if (isBackendUnavailable(response.status)) throw new BackendUnavailableError(response.status, response.url);
   if (!response.ok) return null;
   return (await response.json()) as BlogIndexResponse;
 }

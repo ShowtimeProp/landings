@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import MLSMapClient from '@/components/MLSMapClient';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -23,6 +24,7 @@ async function fetchConfig(): Promise<MapConfig | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/mls/public/config`, {
       next: { revalidate: 3600 },
+      headers: backendSsrHeaders(),
     });
     if (!res.ok) return null;
     return (await res.json()) as MapConfig;

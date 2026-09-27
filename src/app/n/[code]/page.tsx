@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { backendSsrHeaders } from '@/lib/backend';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 
@@ -13,6 +14,7 @@ export default async function SmartBioNfcResolverPage({
 
   const res = await fetch(`${BACKEND_URL}/api/smart-bios/public/cards/${encodeURIComponent(cleanCode)}/resolve`, {
     cache: 'no-store',
+    headers: backendSsrHeaders(),
   });
   if (!res.ok) redirect('/');
   const data = (await res.json()) as { redirect_url?: string };
