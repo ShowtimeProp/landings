@@ -9,7 +9,6 @@ export const pricing = {
   tourBase: { price: 40, maxM2: 50 },
   tourAereo: { price: 85, maxM2: 50 },
   hosting: { mesesSinCargo: 3, mensual: 3.5, anual: 35, mesesDeRegaloAnual: 2 },
-  bonusCrm: { minTours: 10 },
 } as const;
 
 export function usd(value: number): string {
@@ -23,8 +22,6 @@ const precioHosting =
   `Los primeros ${pricing.hosting.mesesSinCargo} meses de hosting de cada tour son sin cargo. Después, ` +
   `${usd(pricing.hosting.mensual)} por tour por mes, o ${usd(pricing.hosting.anual)} por tour por año ` +
   `(pagando el año, ${pricing.hosting.mesesDeRegaloAnual} meses te quedan de regalo). Más IVA.`;
-const bonusCrm =
-  `Con ${pricing.bonusCrm.minTours} tours virtuales o más tenés acceso al plan básico del CRM de ShowtimeProp sin costo adicional y sin el cargo de puesta en marcha.`;
 
 export const content = {
   meta: {
@@ -221,10 +218,6 @@ export const content = {
       {
         pregunta: "¿Cuánto cuesta el hosting?",
         respuesta: precioHosting,
-      },
-      {
-        pregunta: "¿Hay beneficios si hago varios tours?",
-        respuesta: bonusCrm,
       },
       {
         pregunta: "¿El link vence en algún momento?",

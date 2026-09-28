@@ -13,14 +13,13 @@ function whatsapp(): string {
 }
 
 function pricingLines(): string[] {
-  const { tourBase, tourAereo, hosting, bonusCrm } = pricing;
+  const { tourBase, tourAereo, hosting } = pricing;
   return [
     `- Tour virtual 360 de una propiedad de hasta ${tourBase.maxM2} m²: ${usd(tourBase.price)} + IVA.`,
     `- Mismo tour con tomas aéreas 360 con drone: ${usd(tourAereo.price)} + IVA.`,
     `- Superficies mayores o varias unidades: presupuesto según los metros.`,
     `- Hosting: primeros ${hosting.mesesSinCargo} meses sin cargo por tour; después ${usd(hosting.mensual)} por tour por mes, ` +
       `o ${usd(hosting.anual)} por tour por año (${hosting.mesesDeRegaloAnual} meses de regalo). Más IVA.`,
-    `- Bonus: con ${bonusCrm.minTours} tours o más, plan básico del CRM de ShowtimeProp sin costo adicional y sin cargo de puesta en marcha.`,
     `- ${pricing.ivaNota}`,
   ];
 }
