@@ -8,9 +8,9 @@ import { GlassCta } from "./ui/GlassCta";
 import { CountUp } from "./ui/CountUp";
 
 const badges = [
-  { icon: Link2, label: "Link permanente" },
+  { icon: Link2, label: "Link fijo" },
   { icon: Smartphone, label: "Sin instalar nada" },
-  { icon: ShieldCheck, label: "Hosting incluido" },
+  { icon: ShieldCheck, label: "3 meses de hosting sin cargo" },
 ];
 
 export function ClosingCinematic() {

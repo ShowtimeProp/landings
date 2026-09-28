@@ -1,8 +1,36 @@
+/**
+ * Precios públicos de tours (definidos por el dueño el 28-sep-2026). Sólo el
+ * tramo más económico: arriba de 50 m² se cotiza. Todo en USD + IVA.
+ * Es la única fuente: la FAQ, el Markdown para agentes y el JSON-LD salen de acá.
+ */
+export const pricing = {
+  currency: "USD",
+  ivaNota: "Valores en dólares, más IVA.",
+  tourBase: { price: 40, maxM2: 50 },
+  tourAereo: { price: 85, maxM2: 50 },
+  hosting: { mesesSinCargo: 3, mensual: 3.5, anual: 35, mesesDeRegaloAnual: 2 },
+  bonusCrm: { minTours: 10 },
+} as const;
+
+export function usd(value: number): string {
+  return `USD ${value.toLocaleString("es-AR", { minimumFractionDigits: Number.isInteger(value) ? 0 : 2 })}`;
+}
+
+const precioTour =
+  `Un tour virtual 360 de una propiedad de hasta ${pricing.tourBase.maxM2} m² cuesta ${usd(pricing.tourBase.price)} + IVA, ` +
+  `o ${usd(pricing.tourAereo.price)} + IVA si incluye tomas aéreas 360 con drone.`;
+const precioHosting =
+  `Los primeros ${pricing.hosting.mesesSinCargo} meses de hosting de cada tour son sin cargo. Después, ` +
+  `${usd(pricing.hosting.mensual)} por tour por mes, o ${usd(pricing.hosting.anual)} por tour por año ` +
+  `(pagando el año, ${pricing.hosting.mesesDeRegaloAnual} meses te quedan de regalo). Más IVA.`;
+const bonusCrm =
+  `Con ${pricing.bonusCrm.minTours} tours virtuales o más tenés acceso al plan básico del CRM de ShowtimeProp sin costo adicional.`;
+
 export const content = {
   meta: {
     title: "Tours Virtuales 360 para inmobiliarias y comercios | ShowtimeProp",
     description:
-      "Recorridos 360 navegables para que el interesado conozca el lugar antes de pedir la visita. Producción, hosting y link listo para publicar.",
+      "Tours virtuales 360 para inmobiliarias y comercios en Mar del Plata. Desde USD 40 + IVA, con 3 meses de hosting sin cargo y link listo para publicar.",
   },
 
   nav: {
@@ -25,7 +53,7 @@ export const content = {
     features: [
       "Captura 360 en una sola visita",
       "Recorrido navegable entre ambientes",
-      "Hosting y link permanente incluidos",
+      "3 meses de hosting sin cargo",
       "Funciona en celular, sin instalar nada",
       "Listo para portales, redes y WhatsApp",
       "Se actualiza cuando cambia el lugar",
@@ -100,9 +128,10 @@ export const content = {
         },
         {
           titulo: "Hosting y link",
-          resumen: "Alojado, con link permanente.",
+          resumen: "3 meses sin cargo, link fijo.",
           detalle:
-            "El tour queda alojado en nuestra infraestructura con un link fijo, listo para pegar en cualquier lado sin vencimiento.",
+            "El tour queda alojado en nuestra infraestructura con un link fijo, listo para pegar en cualquier lado. " +
+            precioHosting,
         },
         {
           titulo: "Funciona en cualquier lado",
@@ -186,12 +215,21 @@ export const content = {
       {
         pregunta: "¿Cuánto cuesta?",
         respuesta:
-          "Depende de la cantidad de ambientes y de si es una producción única o varias. Escribinos con el caso y te pasamos un presupuesto concreto, sin vueltas.",
+          precioTour +
+          " Para superficies mayores o varias unidades, el valor depende de los metros: escribinos con el caso y te pasamos un presupuesto concreto, sin vueltas.",
+      },
+      {
+        pregunta: "¿Cuánto cuesta el hosting?",
+        respuesta: precioHosting,
+      },
+      {
+        pregunta: "¿Hay beneficios si hago varios tours?",
+        respuesta: bonusCrm,
       },
       {
         pregunta: "¿El link vence en algún momento?",
         respuesta:
-          "No, el link queda permanente mientras el servicio esté activo. Si el lugar cambia, se puede actualizar la producción.",
+          "No, el link queda fijo mientras el hosting esté activo (los primeros 3 meses van sin cargo). Si el lugar cambia, se puede actualizar la producción.",
       },
     ],
   },
