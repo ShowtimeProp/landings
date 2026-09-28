@@ -20,7 +20,7 @@ function pricingLines(): string[] {
     `- Superficies mayores o varias unidades: presupuesto según los metros.`,
     `- Hosting: primeros ${hosting.mesesSinCargo} meses sin cargo por tour; después ${usd(hosting.mensual)} por tour por mes, ` +
       `o ${usd(hosting.anual)} por tour por año (${hosting.mesesDeRegaloAnual} meses de regalo). Más IVA.`,
-    `- Bonus: con ${bonusCrm.minTours} tours o más, plan básico del CRM de ShowtimeProp sin costo adicional.`,
+    `- Bonus: con ${bonusCrm.minTours} tours o más, plan básico del CRM de ShowtimeProp sin costo adicional y sin cargo de puesta en marcha.`,
     `- ${pricing.ivaNota}`,
   ];
 }

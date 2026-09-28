@@ -1,5 +1,5 @@
 /**
- * Precios públicos de tours (definidos por el dueño el 28-sep-2026). Sólo el
+ * Precios públicos de tours (definidos y confirmados por el dueño el 28-sep-2026). Sólo el
  * tramo más económico: arriba de 50 m² se cotiza. Todo en USD + IVA.
  * Es la única fuente: la FAQ, el Markdown para agentes y el JSON-LD salen de acá.
  */
@@ -24,7 +24,7 @@ const precioHosting =
   `${usd(pricing.hosting.mensual)} por tour por mes, o ${usd(pricing.hosting.anual)} por tour por año ` +
   `(pagando el año, ${pricing.hosting.mesesDeRegaloAnual} meses te quedan de regalo). Más IVA.`;
 const bonusCrm =
-  `Con ${pricing.bonusCrm.minTours} tours virtuales o más tenés acceso al plan básico del CRM de ShowtimeProp sin costo adicional.`;
+  `Con ${pricing.bonusCrm.minTours} tours virtuales o más tenés acceso al plan básico del CRM de ShowtimeProp sin costo adicional y sin el cargo de puesta en marcha.`;
 
 export const content = {
   meta: {
