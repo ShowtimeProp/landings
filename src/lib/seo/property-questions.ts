@@ -2,7 +2,8 @@ import type { StructuredDataProperty } from './property-structured-data';
 
 export type PropertyQuestion = { question: string; answer: string; href?: string; linkLabel?: string };
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
-const numeric = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+// 0 es el default de carga, no un dato (mismo criterio que el JSON-LD y el Markdown).
+const numeric = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const number = (value: number) => value.toLocaleString('es-AR', { maximumFractionDigits: 2 });
 
 export function formatDeliveryDate(value?: string | null): string | null {
@@ -20,8 +21,10 @@ export function buildPropertyQuestions(property: StructuredDataProperty, whatsap
     add('¿Cuál es el precio?', `${currency} ${number(property.price_min)} a ${currency} ${number(property.price_max)}`);
   } else if (currency && numeric(property.price)) add('¿Cuál es el precio?', `${currency} ${number(property.price)}`);
   if (numeric(property.expenses_amount) && text(property.expenses_currency)) add('¿Tiene expensas?', `${text(property.expenses_currency)} ${number(property.expenses_amount)}`);
-  if (typeof property.apto_credito === 'boolean') add('¿Es apta crédito?', property.apto_credito ? 'Sí' : 'No');
-  if (typeof property.financiacion_propia === 'boolean') add('¿Tiene financiación?', property.financiacion_propia ? 'Sí' : 'No');
+  // En la base ambos campos arrancan en false: false significa «no cargado», no «no».
+  // Sólo se pregunta cuando la inmobiliaria marcó que sí.
+  if (property.apto_credito === true) add('¿Es apta crédito?', 'Sí');
+  if (property.financiacion_propia === true) add('¿Tiene financiación propia?', 'Sí');
   const delivery = formatDeliveryDate(property.fecha_finalizacion_obra);
   if (delivery) add('¿Cuándo se entrega?', `Entrega estimada: ${delivery}`);
   const dimensions: string[] = [];

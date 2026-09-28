@@ -8,7 +8,7 @@ export function buildSiteLlms(tenants: IndexableTenant[]): string {
   const sections = [
     '# ShowtimeProp',
     '> Landings y portfolios de inmobiliarias con tours virtuales 360° en Mar del Plata y zona.',
-    `## ShowtimeProp\n\n- [Tours virtuales 360°](${LANDINGS_URL}/tours): Conocé el servicio de tours virtuales.`,
+    `## ShowtimeProp\n\n- [Tours virtuales 360°](https://tours.showtimeprop.com/): Conocé el servicio de tours virtuales.`,
   ];
   if (tenants.length) sections.push(`## Inmobiliarias\n\n${tenants.flatMap((tenant) => [
     `- [${linkText(tenant.name)}](${portfolioUrl(tenant.slug)}.md): Portfolio en Markdown.`,
@@ -29,7 +29,7 @@ export function buildTenantLlms({ tenant, properties }: PublicPortfolio): string
   const email = cleanText(tenant.email);
   const whatsapp = whatsappUrl(tenant.whatsapp);
   if (phone) contact.push(`- [Teléfono ${linkText(phone)}](tel:${phone.replace(/[^+\d]/g, '')})`);
-  if (email) contact.push(`- [Email ${linkText(email)}](mailto:${encodeURIComponent(email)})`);
+  if (email) contact.push(`- [Email ${linkText(email)}](mailto:${email})`);
   if (whatsapp) contact.push(`- [WhatsApp](${whatsapp}): Consultá a la inmobiliaria.`);
   if (contact.length) sections.push(`## Contacto\n\n${contact.join('\n')}`);
   sections.push(`## Portfolio\n\n- [Portfolio de ${linkText(agencyName(tenant))}](${portfolioUrl(tenant.slug)}.md): Todas las propiedades públicas.`);

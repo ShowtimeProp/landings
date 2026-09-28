@@ -21,10 +21,13 @@ test('missing fields omit questions, dates, offers, amenities and videos', () =>
   assert.equal(listing.mainEntity.accommodationFloorPlan, undefined);
 });
 test('explicit false and zero survive; missing currencies do not invent money', () => {
+  // false y 0 son defaults de carga: no se publican como dato.
   const questions = buildPropertyQuestions({ name: 'Casa', apto_credito: false, financiacion_propia: false, bedrooms: 0, expenses_amount: 0, expenses_currency: 'ARS', price: 100 }, '');
-  assert.equal(questions.filter((q) => q.answer === 'No').length, 2);
-  assert(questions.some((q) => q.answer === 'ARS 0'));
-  assert(questions.some((q) => q.answer === '0 dormitorios'));
+  assert.equal(questions.filter((q) => q.answer === 'No').length, 0);
+  assert(!questions.some((q) => q.answer === 'ARS 0'));
+  assert(!questions.some((q) => q.answer.includes('0 dormitorios')));
+  const confirmed = buildPropertyQuestions({ name: 'Casa', apto_credito: true, financiacion_propia: true }, '');
+  assert.deepEqual(confirmed.map((q) => [q.question, q.answer]), [['¿Es apta crédito?', 'Sí'], ['¿Tiene financiación propia?', 'Sí']]);
   assert(!questions.some((q) => q.question === '¿Cuál es el precio?'));
   assert.equal(build({ price: 100 }).offers, undefined);
 });

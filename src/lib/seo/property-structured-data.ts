@@ -137,7 +137,7 @@ function accommodationType(propertyType?: string | null): string {
 }
 
 function isRental(operationType?: string | null): boolean {
-  return /alquiler|renta|arriendo/i.test(text(operationType));
+  return /alquiler|renta|arriendo|^rent/i.test(text(operationType));
 }
 
 
@@ -177,7 +177,7 @@ export function buildPropertyStructuredData({
   const images = (property.images || []).map(imageUrl).filter(Boolean).slice(0, 10);
   const postalAddress = buildPostalAddress(property.address);
   const seller = buildRealEstateAgent(tenant, portfolioUrl);
-  const agencyName = seller.name;
+  const agencyName = seller.name || 'Inmobiliaria';
 
   const accommodation: Record<string, unknown> = {
     '@type': accommodationType(property.property_type),
