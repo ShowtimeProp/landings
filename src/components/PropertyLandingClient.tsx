@@ -22,6 +22,7 @@ import {
   campaignParamsFromSearchParams,
   captureCurrentCampaignFromLocation,
 } from '@/lib/campaign-tracking';
+import QRCode from 'qrcode';
 import { googleReviewsHref } from '@/lib/google-reviews';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
