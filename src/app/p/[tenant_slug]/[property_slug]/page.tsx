@@ -37,6 +37,7 @@ type PublicTenant = {
   contact_ref_applied?: boolean | null;
   contact_ref_code?: string | null;
   google_place_id?: string | null;
+  google_reviews_url?: string | null;
   google_calendar_connected?: boolean;
   map?: {
     enabled: boolean;

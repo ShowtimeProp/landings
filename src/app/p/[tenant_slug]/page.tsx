@@ -16,6 +16,7 @@ import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { TenantSocialLinks } from '@/components/social-links';
 import QRCode from 'qrcode';
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
+import { googleReviewsHref } from '@/lib/google-reviews';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -65,6 +66,7 @@ type Tenant = {
   vcard_qr_data_url?: string | null;
   contact_ref_applied?: boolean | null;
   contact_ref_code?: string | null;
+  google_reviews_url?: string | null;
   marketing?: {
     gtm_enabled?: boolean;
     gtm_container_id?: string | null;
@@ -104,24 +106,6 @@ type ApiResponse = {
   status: 'ok';
   tenant: Tenant;
   properties: PropertyItem[];
-};
-
-type PlaceReviewsResponse = {
-  rating: number | null;
-  reviews: {
-    author_name?: string;
-    rating?: number;
-    text?: string;
-    relative_time_description?: string;
-  }[];
-  user_ratings_total: number;
-  open_now?: boolean | null;
-  opening_hours?: string[];
-  config?: {
-    has_google_place_id?: boolean;
-    has_google_api_key?: boolean;
-    reason?: string;
-  };
 };
 
 type PublicBlogSummary = {
@@ -209,15 +193,6 @@ async function fetchPortfolio(
   if (!res.ok) return null;
   const data = (await res.json()) as ApiResponse;
   if (!data?.tenant?.slug || !Array.isArray(data?.properties)) return null;
-  return data;
-}
-
-async function fetchPlaceReviews(tenantSlug: string): Promise<PlaceReviewsResponse | null> {
-  const url = `${BACKEND_URL}/api/properties/public/place-reviews?tenant_slug=${encodeURIComponent(tenantSlug)}`;
-  const res = await fetch(url, { next: { revalidate: 600 }, headers: backendSsrHeaders() });
-  if (!res.ok) return null;
-  const data = (await res.json()) as PlaceReviewsResponse;
-  if (!data || typeof data !== 'object') return null;
   return data;
 }
 
@@ -452,10 +427,7 @@ export default async function PortfolioPage({
   const referralCode = normalizeReferralCode(refParam);
   const data = await fetchPortfolio(tenant_slug, referralCode);
   if (!data) notFound();
-  const [placeReviews, blogSummary] = await Promise.all([
-    fetchPlaceReviews(tenant_slug),
-    fetchPublicBlogSummary(tenant_slug, referralCode),
-  ]);
+  const blogSummary = await fetchPublicBlogSummary(tenant_slug, referralCode);
 
   const { tenant, properties } = data;
   const campaignQueryString = buildCampaignQueryString(resolvedSearchParams, referralCode);
@@ -496,12 +468,7 @@ export default async function PortfolioPage({
       portfolioVcardQrDataUrl = persistedQrFallback;
     }
   }
-  const hasReviewsContent = Boolean(
-    placeReviews &&
-      (placeReviews.rating != null ||
-        (placeReviews.reviews && placeReviews.reviews.length > 0) ||
-        (placeReviews.opening_hours && placeReviews.opening_hours.length > 0))
-  );
+  const googleReviewsUrl = googleReviewsHref(tenant);
   const theme = normalizeTheme(themeParam);
   const isLight = theme === 'light';
   const isSoft = theme === 'soft';
@@ -796,66 +763,20 @@ export default async function PortfolioPage({
           </div>
         </section>
 
-        {hasReviewsContent && placeReviews && (
+        {googleReviewsUrl && (
           <section className={`mt-6 rounded-2xl border p-5 sm:p-6 ${sectionClass}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Opiniones en Google</h2>
-              {placeReviews.rating != null && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold">{placeReviews.rating.toFixed(1)}</span>
-                  <span className="text-amber-300">
-                    {'★'.repeat(Math.max(0, Math.min(5, Math.round(placeReviews.rating))))}
-                    {'☆'.repeat(Math.max(0, 5 - Math.round(placeReviews.rating)))}
-                  </span>
-                  {placeReviews.user_ratings_total > 0 && (
-                    <span className={`text-sm ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>({placeReviews.user_ratings_total})</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {typeof placeReviews.open_now === 'boolean' && (
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                    placeReviews.open_now
-                      ? 'border-emerald-300/35 bg-emerald-400/15 text-emerald-200'
-                      : 'border-zinc-300/25 bg-zinc-400/10 text-zinc-300'
-                  }`}
-                >
-                  {placeReviews.open_now ? 'Abierto ahora' : 'Cerrado ahora'}
-                </span>
-              )}
-              {placeReviews.opening_hours && placeReviews.opening_hours.length > 0 && (
-                <span className={`text-xs ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>{placeReviews.opening_hours[0]}</span>
-              )}
-            </div>
-
-            {placeReviews.reviews && placeReviews.reviews.length > 0 && (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {placeReviews.reviews.slice(0, 2).map((review, idx) => (
-                  <article
-                    key={`${review.author_name || 'review'}-${idx}`}
-                    className={`rounded-xl border p-3 ${
-                      isLight ? 'border-zinc-200 bg-zinc-50' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <p className={`text-sm font-medium ${titleTextClass}`}>{review.author_name || 'Cliente'}</p>
-                      {review.rating != null && (
-                        <span className="text-xs text-amber-300">
-                          {'★'.repeat(Math.max(0, Math.min(5, Math.round(review.rating))))}
-                          {'☆'.repeat(Math.max(0, 5 - Math.round(review.rating)))}
-                        </span>
-                      )}
-                    </div>
-                    {review.text && (
-                      <p className={`line-clamp-3 text-sm leading-relaxed ${subtleTextClass}`}>{review.text}</p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
+            <h2 className="text-xl font-semibold">Opiniones en Google</h2>
+            <p className={`mt-2 text-sm ${subtleTextClass}`}>
+              Las opiniones de esta inmobiliaria están en Google. Abrí el perfil para ver rating y reseñas reales.
+            </p>
+            <a
+              href={googleReviewsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-400 px-4 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
+            >
+              Ver Google Reviews
+            </a>
           </section>
         )}
 

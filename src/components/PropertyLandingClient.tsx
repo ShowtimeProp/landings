@@ -22,7 +22,7 @@ import {
   campaignParamsFromSearchParams,
   captureCurrentCampaignFromLocation,
 } from '@/lib/campaign-tracking';
-import QRCode from 'qrcode';
+import { googleReviewsHref } from '@/lib/google-reviews';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const WIDGET_ASSET_VERSION = 'agent-orbs-v3-20260321';
@@ -99,6 +99,7 @@ type Tenant = {
   contact_ref_applied?: boolean | null;
   contact_ref_code?: string | null;
   google_place_id?: string | null;
+  google_reviews_url?: string | null;
   google_calendar_connected?: boolean;
   map?: {
     enabled: boolean;
@@ -221,13 +222,7 @@ export function PropertyLandingClient({
   const [hasPortalSession, setHasPortalSession] = useState(false);
   const [favoriteSaved, setFavoriteSaved] = useState(false);
   const [savingFavorite, setSavingFavorite] = useState(false);
-  const [reviews, setReviews] = useState<{
-    rating: number | null;
-    reviews: { author_name?: string; rating?: number; text?: string; relative_time_description?: string }[];
-    user_ratings_total: number;
-    open_now?: boolean | null;
-    opening_hours?: string[];
-  } | null>(null);
+  const googleReviewsUrl = googleReviewsHref(tenant);
   const [generatedVcardQr, setGeneratedVcardQr] = useState<{
     vcardUrl: string;
     dataUrl: string;
@@ -324,16 +319,6 @@ export function PropertyLandingClient({
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!tenant.google_place_id || !tenant.slug) return;
-    fetch(
-      `${BACKEND_URL}/api/properties/public/place-reviews?tenant_slug=${encodeURIComponent(tenant.slug)}`
-    )
-      .then((r) => r.json())
-      .then(setReviews)
-      .catch(() => setReviews(null));
-  }, [tenant.google_place_id, tenant.slug]);
 
   useEffect(() => {
     if (!tenant.id || !property.id) return;
@@ -1258,90 +1243,24 @@ export function PropertyLandingClient({
           </section>
         )}
 
-        {reviews &&
-          (reviews.rating != null ||
-            reviews.reviews.length > 0 ||
-            (reviews.opening_hours && reviews.opening_hours.length > 0)) && (
+        {googleReviewsUrl && (
           <section
             data-reveal-id="reviews"
             className={`mx-auto max-w-4xl px-4 py-12 sm:px-6 ${revealClass('reviews')}`}
           >
             <h2 className="mb-6 text-2xl font-bold">Opiniones en Google</h2>
-            <div className="rounded-xl border border-zinc-200 p-6 shadow-sm transition duration-300 hover:shadow-lg dark:border-zinc-700">
-              {reviews.rating != null && (
-                <div className="mb-6 flex flex-wrap items-center gap-3">
-                  <span className="text-2xl font-bold">{reviews.rating.toFixed(1)}</span>
-                  <div className="flex text-amber-400">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <span key={i}>{i <= Math.round(reviews.rating!) ? '★' : '☆'}</span>
-                    ))}
-                  </div>
-                  {reviews.user_ratings_total > 0 && (
-                    <span className="text-sm text-zinc-500">
-                      ({reviews.user_ratings_total} opiniones)
-                    </span>
-                  )}
-                  {typeof reviews.open_now === 'boolean' && (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                        reviews.open_now
-                          ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-zinc-500/12 text-zinc-600 dark:text-zinc-300'
-                      }`}
-                    >
-                      {reviews.open_now ? 'Abierto ahora' : 'Cerrado ahora'}
-                    </span>
-                  )}
-                </div>
-              )}
-              {reviews.opening_hours && reviews.opening_hours.length > 0 && (
-                <div className="mb-6 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-900/60">
-                  <p className="text-sm font-semibold">Horarios de atención</p>
-                  <div className="mt-3 space-y-2">
-                    {reviews.opening_hours.map((line, index) => (
-                      <p key={index} className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {reviews.reviews.length > 0 && (
-                <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Reseñas destacadas 4 y 5 estrellas
-                  </p>
-                  <div className="space-y-4">
-                    {reviews.reviews.map((r, i) => (
-                      <div key={i} className="border-t border-zinc-200 pt-4 dark:border-zinc-700 first:border-0 first:pt-0">
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className="font-medium">{r.author_name}</span>
-                          {r.rating != null && (
-                            <span className="text-amber-400">
-                              {'★'.repeat(Math.round(r.rating))}
-                              {'☆'.repeat(5 - Math.round(r.rating))}
-                            </span>
-                          )}
-                          {r.relative_time_description && (
-                            <span className="text-xs text-zinc-500">{r.relative_time_description}</span>
-                          )}
-                        </div>
-                        {r.text && <p className="text-sm text-zinc-600 dark:text-zinc-400">{r.text}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {reviews.rating != null && reviews.reviews.length === 0 && (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  La ficha de Google no devolvió reseñas destacadas de 4 o 5 estrellas para mostrar en este momento.
-                </p>
-              )}
-              {!reviews.rating && (!reviews.opening_hours || reviews.opening_hours.length === 0) && (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  No hay información pública de Google disponible en este momento.
-                </p>
-              )}
+            <div className={`rounded-xl border p-6 ${interactiveCardClass}`}>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Las opiniones de esta inmobiliaria están en Google. Abrí el perfil para ver rating y reseñas reales.
+              </p>
+              <a
+                href={googleReviewsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-400 px-4 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
+              >
+                Ver Google Reviews
+              </a>
             </div>
           </section>
         )}

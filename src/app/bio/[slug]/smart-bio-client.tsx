@@ -13,6 +13,7 @@ import {
   type BioMode,
   type SmartBioThemeConfig,
 } from '@/lib/smart-bio-theme';
+import { googleReviewsHref } from '@/lib/google-reviews';
 
 declare global {
   interface Window {
@@ -49,6 +50,8 @@ type SmartBioData = {
     social_links?: Record<string, string> | null;
     martillero_responsable?: string | null;
     martillero_registro?: string | null;
+    google_place_id?: string | null;
+    google_reviews_url?: string | null;
   };
   seller?: {
     user_id?: string | null;
@@ -87,12 +90,6 @@ type SmartBioData = {
     bio_profile_id: string;
     source: string;
   };
-};
-
-type Reviews = {
-  rating?: number | null;
-  user_ratings_total?: number;
-  reviews?: Array<{ author_name?: string; rating?: number; text?: string; relative_time_description?: string }>;
 };
 
 const LANGS = ['es', 'en', 'pt'] as const;
@@ -312,11 +309,9 @@ function ContactIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 export default function SmartBioClient({
   initialData,
-  reviews,
   backendUrl,
 }: {
   initialData: SmartBioData;
-  reviews: Reviews | null;
   backendUrl: string;
 }) {
   const profile = initialData.profile;
@@ -332,6 +327,7 @@ export default function SmartBioClient({
   const [formError, setFormError] = useState('');
 
   const blocks = profile.enabled_blocks || {};
+  const googleReviewsUrl = googleReviewsHref(initialData.tenant);
   const contact = { ...(initialData.contact || {}), ...(profile.contact_overrides || {}) };
   const langConfig = profile.language_config || {};
   const enabledLangs = useMemo(() => {
@@ -822,22 +818,25 @@ export default function SmartBioClient({
           </section>
         ) : null}
 
-        {blocks.google_reviews && reviews && (reviews.rating || reviews.reviews?.length) ? (
+        {blocks.google_reviews && googleReviewsUrl ? (
           <section className={`mt-6 p-4 ${theme.cardClass} ${theme.borderClass}`}>
             <h2 className="text-lg font-semibold">{currentText.reviews_title || 'Opiniones de clientes'}</h2>
-            {reviews.rating ? (
-              <p className={`mt-2 text-sm ${theme.mutedTextClass}`}>
-                <span className="font-semibold text-[var(--bio-text)]">{reviews.rating.toFixed(1)}</span> / 5 · {reviews.user_ratings_total || 0} opiniones
-              </p>
-            ) : null}
-            <div className="mt-3 space-y-3">
-              {(reviews.reviews || []).slice(0, 3).map((review, index) => (
-                <blockquote key={`${review.author_name}-${index}`} className={`p-3 text-sm ${theme.radiusClass}`} style={{ background: 'var(--bio-bg)' }}>
-                  <p className={theme.mutedTextClass}>{review.text}</p>
-                  <footer className="mt-2 font-semibold">{review.author_name}</footer>
-                </blockquote>
-              ))}
-            </div>
+            <p className={`mt-2 text-sm ${theme.mutedTextClass}`}>
+              {lang === 'en'
+                ? 'Read our Google Reviews on Google.'
+                : lang === 'pt'
+                  ? 'Veja as avaliações no Google.'
+                  : 'Las opiniones están en Google. Abrí el perfil para ver rating y reseñas reales.'}
+            </p>
+            <a
+              href={googleReviewsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track('bio_card_click', { card: 'google_reviews' })}
+              className={`mt-4 ${glassPrimaryBtnClass}`}
+            >
+              {lang === 'en' ? 'View Google Reviews' : lang === 'pt' ? 'Ver Google Reviews' : 'Ver Google Reviews'}
+            </a>
           </section>
         ) : null}
 
