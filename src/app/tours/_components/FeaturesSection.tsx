@@ -23,27 +23,30 @@ export function FeaturesSection() {
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
           {features.incluye.items.map((item, i) => (
-            <div key={item.titulo} data-reveal data-reveal-delay={String(i * 90)} className="h-56">
+            <div key={item.titulo} data-reveal data-reveal-delay={String(i * 90)} className="h-64">
               <FlipCard
                 front={
-                  <div className="flex h-full flex-col justify-between rounded-card border border-hairline-2 bg-surface p-6 transition-colors group-hover:border-gold/40">
+                  <div className="flex h-full flex-col rounded-card border border-hairline-2 bg-surface p-6 transition-colors group-hover:border-gold/40">
                     <div className="flex items-start justify-between">
                       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-success/15">
                         <Check className="h-5 w-5 text-success" />
                       </span>
-                      <RotateCw className="h-4 w-4 text-muted-tours" />
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-tours">
+                        <RotateCw className="h-3.5 w-3.5" />
+                        Ver detalle
+                      </span>
                     </div>
-                    <div>
+                    <div className="mt-6">
                       <p className="font-tours-sans text-base font-semibold text-white">{item.titulo}</p>
-                      <p className="mt-1 text-sm text-body">{item.resumen}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-body">{item.resumen}</p>
                     </div>
                   </div>
                 }
                 back={
-                  <div className="flex h-full flex-col justify-between rounded-card border border-gold/40 bg-surface p-6">
+                  <div className="flex h-full flex-col rounded-card border border-gold/40 bg-surface p-6">
                     <p className="font-tours-sans text-sm font-semibold text-gold">{item.titulo}</p>
-                    <p className="text-sm leading-relaxed text-body">{item.detalle}</p>
-                    <span className="flex items-center gap-1.5 text-xs text-muted-tours">
+                    <p className="mt-3 flex-1 overflow-y-auto text-sm leading-relaxed text-body">{item.detalle}</p>
+                    <span className="mt-4 flex items-center gap-1.5 text-xs text-muted-tours">
                       <RotateCw className="h-3.5 w-3.5" />
                       Tocá para volver
                     </span>
@@ -56,11 +59,11 @@ export function FeaturesSection() {
 
         <div data-reveal className="mt-6 rounded-card border border-hairline bg-surface/40 p-6 sm:p-8">
           <p className="font-tours-sans text-sm font-semibold text-white">{features.noIncluye.label}</p>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+          <ul className="mt-4 space-y-3">
             {features.noIncluye.items.map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-tours" />
-                <span className="text-sm leading-relaxed text-body">{item}</span>
+                <span className="text-sm leading-relaxed text-pretty text-body">{item}</span>
               </li>
             ))}
           </ul>

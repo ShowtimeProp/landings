@@ -29,7 +29,7 @@ export function ExamplesMarquee() {
   }
 
   return (
-    <section id="clientes" className="relative bg-ink py-16 sm:py-24">
+    <section id="clientes" className="relative scroll-mt-28 bg-ink py-16 sm:py-24">
       <div className="mx-auto max-w-5xl px-5">
         <div data-reveal className="text-center">
           <p className="font-tours-sans text-xs font-semibold uppercase tracking-[0.2em] text-gold">
@@ -72,7 +72,7 @@ export function ExamplesMarquee() {
                     {client.lugar}
                   </p>
                 </div>
-                <p className="text-xs font-medium text-gold opacity-0 transition-opacity group-hover:opacity-100">
+                <p className="text-xs font-medium text-gold transition-colors group-hover:text-gold-hi">
                   {client.tours.length > 1 ? clientes.ctaMultiple : clientes.ctaCategoria} →
                 </p>
               </button>

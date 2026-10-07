@@ -9,7 +9,7 @@ export function DemoSection() {
   const [started, setStarted] = useState(false);
 
   return (
-    <section id="demo" className="relative bg-ink py-16 sm:py-24">
+    <section id="demo" className="relative scroll-mt-28 bg-ink py-16 sm:py-24">
       <div className="mx-auto max-w-5xl px-5">
         <div data-reveal className="text-center">
           <p className="font-tours-sans text-xs font-semibold uppercase tracking-[0.2em] text-gold">
@@ -25,11 +25,7 @@ export function DemoSection() {
           <p className="mx-auto mt-4 max-w-xl text-body">{content.demo.body}</p>
         </div>
 
-        <div
-          data-reveal
-          data-reveal-delay="120"
-          className="relative mt-10 overflow-hidden rounded-card border border-hairline-2 bg-surface"
-        >
+        <div className="relative mt-10 overflow-hidden rounded-card border border-hairline-2 bg-surface shadow-[0_30px_80px_-30px_rgba(245,197,24,0.35)]">
           <div className="relative aspect-[16/10] w-full sm:aspect-[16/8]">
             {started ? (
               <iframe

@@ -5,7 +5,7 @@ export function FAQSection() {
   const { faq } = content;
 
   return (
-    <section id="preguntas" className="relative bg-ink py-16 sm:py-24">
+    <section id="preguntas" className="relative scroll-mt-28 bg-ink py-16 sm:py-24">
       <div className="mx-auto max-w-3xl px-5">
         <div data-reveal className="text-center">
           <p className="font-tours-sans text-xs font-semibold uppercase tracking-[0.2em] text-gold">

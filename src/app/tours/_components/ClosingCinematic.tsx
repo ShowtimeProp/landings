@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { ArrowRight, Compass, Link2, ShieldCheck, Smartphone } from "lucide-react";
 import { content } from "../_lib/content";
 import { waLink } from "../_lib/site";
@@ -14,67 +14,28 @@ const badges = [
 ];
 
 export function ClosingCinematic() {
-  const pinRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const badgeRefs = useRef<Array<HTMLDivElement | null>>([]);
   const phoneRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let ctx: { revert: () => void } | undefined;
-
-    (async () => {
-      const [{ gsap }, { ScrollTrigger }] = await Promise.all([
-        import("gsap"),
-        import("gsap/ScrollTrigger"),
-      ]);
-      gsap.registerPlugin(ScrollTrigger);
-
-      ctx = gsap.context(() => {
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: pinRef.current,
-            start: "top top",
-            end: "+=2200",
-            scrub: 1,
-            pin: true,
-          },
-        });
-
-        tl.fromTo(cardRef.current, { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 1, ease: "power2.out" })
-          .fromTo(
-            badgeRefs.current.filter(Boolean),
-            { opacity: 0, y: 16 },
-            { opacity: 1, y: 0, stagger: 0.18, duration: 0.6, ease: "power2.out" },
-            "-=0.5"
-          );
-      }, pinRef);
-    })();
-
-    return () => ctx?.revert();
-  }, []);
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = phoneRef.current;
-    if (!el) return;
+    if (!el || window.matchMedia("(pointer: coarse)").matches) return;
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `rotateY(${px * 14}deg) rotateX(${-py * 14}deg)`;
+    el.style.transform = `rotateY(${px * 10}deg) rotateX(${-py * 10}deg)`;
   }
 
   function onPointerLeave() {
-    if (phoneRef.current) phoneRef.current.style.transform = "rotateY(0deg) rotateX(0deg)";
+    if (phoneRef.current) phoneRef.current.style.transform = "";
   }
 
   return (
-    <section ref={pinRef} className="relative flex min-h-screen items-center overflow-hidden bg-ink py-16">
-      <div className="gold-glow left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2" />
+    <section className="relative overflow-hidden bg-ink py-16 sm:py-24">
+      <div className="gold-glow left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 opacity-60" />
 
       <div
-        ref={cardRef}
-        className="relative mx-auto grid w-full max-w-5xl items-center gap-12 rounded-card border border-hairline-2 bg-surface/70 px-6 py-14 backdrop-blur-sm sm:px-12 lg:grid-cols-[1.1fr_0.9fr]"
+        data-reveal
+        className="relative mx-auto grid w-full max-w-5xl items-center gap-10 overflow-hidden rounded-card border border-hairline-2 bg-surface/80 px-6 py-10 backdrop-blur-sm sm:px-10 sm:py-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8"
       >
         <div>
           <p className="font-tours-sans text-xs font-semibold uppercase tracking-[0.2em] text-gold">
@@ -98,6 +59,21 @@ export function ClosingCinematic() {
             <span className="text-sm text-muted-tours">{content.closing.stat.label}</span>
           </div>
 
+          <ul className="mt-6 flex flex-col items-start gap-2">
+            {badges.map((badge) => {
+              const Icon = badge.icon;
+              return (
+                <li
+                  key={badge.label}
+                  className="inline-flex items-center gap-2 rounded-pill border border-hairline-2 bg-ink/70 px-3.5 py-2 text-[13px] font-medium text-white"
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-gold" />
+                  {badge.label}
+                </li>
+              );
+            })}
+          </ul>
+
           <div className="mt-8">
             <GlassCta href={waLink(content.whatsappFloat.mensaje)} tone="gold" icon={<ArrowRight className="h-4 w-4" />}>
               {content.closing.ctaPrimary}
@@ -106,14 +82,14 @@ export function ClosingCinematic() {
         </div>
 
         <div
-          className="relative flex justify-center py-6"
+          className="relative hidden justify-center py-4 sm:flex"
           style={{ perspective: "1000px" }}
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
         >
           <div
             ref={phoneRef}
-            className="relative h-[380px] w-[190px] rounded-[2.25rem] border-4 border-hairline-2 bg-ink shadow-2xl transition-transform duration-200 ease-out sm:h-[420px] sm:w-[210px]"
+            className="relative h-[340px] w-[170px] rounded-[2.25rem] border-4 border-hairline-2 bg-ink shadow-2xl transition-transform duration-200 ease-out sm:h-[400px] sm:w-[200px]"
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="absolute left-1/2 top-2 h-4 w-16 -translate-x-1/2 rounded-full bg-hairline-2" />
@@ -122,28 +98,6 @@ export function ClosingCinematic() {
               <span className="absolute left-[30%] top-[35%] h-2 w-2 animate-pulse rounded-full bg-gold" />
               <span className="absolute right-[26%] bottom-[32%] h-2 w-2 animate-pulse rounded-full bg-gold" />
             </div>
-
-            {badges.map((badge, i) => {
-              const Icon = badge.icon;
-              const positions = [
-                "-left-16 top-6",
-                "-right-20 top-1/2 -translate-y-1/2",
-                "-left-12 bottom-10",
-              ];
-              return (
-                <div
-                  key={badge.label}
-                  ref={(el) => {
-                    badgeRefs.current[i] = el;
-                  }}
-                  className={`glass-cta !absolute !flex !gap-1.5 !px-3.5 !py-2 !text-[11px] !font-semibold ${positions[i]}`}
-                  style={{ transform: "translateZ(40px)" }}
-                >
-                  <Icon className="h-3.5 w-3.5 text-gold" />
-                  {badge.label}
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
