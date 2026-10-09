@@ -40,16 +40,21 @@ export function DemoSection() {
               <button
                 type="button"
                 onClick={() => setStarted(true)}
-                className="group absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-4 bg-gradient-to-br from-surface via-ink to-surface"
+                className="group absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-4"
               >
-                <div className="gold-glow left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2" />
+                <img
+                  src="/tours-demo-poster.jpg"
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                />
+                <span className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/30 to-ink/20" />
                 <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-gold/40 bg-gold text-ink shadow-[0_0_40px_rgba(245,197,24,0.45)] transition-transform group-hover:scale-105">
                   <Play className="ml-0.5 h-6 w-6" fill="currentColor" />
                 </span>
                 <span className="relative font-tours-sans text-sm font-semibold text-white">
                   Tocá para explorar el tour
                 </span>
-                <span className="relative flex items-center gap-1.5 text-xs text-muted-tours">
+                <span className="relative flex items-center gap-1.5 text-xs text-white/80">
                   <Volume2 className="h-3.5 w-3.5" />
                   {content.demo.muteNote}
                 </span>
