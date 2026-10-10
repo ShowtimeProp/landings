@@ -7,6 +7,7 @@ import { Navbar } from "./_components/Navbar";
 import { Hero } from "./_components/Hero";
 import { DemoSection } from "./_components/DemoSection";
 import { ProblemSection } from "./_components/ProblemSection";
+import { ProofSection } from "./_components/ProofSection";
 import { CreamSection } from "./_components/CreamSection";
 import { FeaturesSection } from "./_components/FeaturesSection";
 import { ExamplesMarquee } from "./_components/ExamplesMarquee";
@@ -35,6 +36,7 @@ export default function ToursPage() {
       <Hero />
       <DemoSection />
       <ProblemSection />
+      <ProofSection />
       <CreamSection />
       <FeaturesSection />
       <ExamplesMarquee />

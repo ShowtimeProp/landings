@@ -91,6 +91,45 @@ export const content = {
     },
   },
 
+  prueba: {
+    kicker: "Lo que muestra la industria",
+    title: "No es un adorno.",
+    titleAccent: "Cambia quién te escribe.",
+    body: "No son resultados de un cliente nuestro. Son referencias del rubro: sirven para ver por qué un recorrido rinde más que un puñado de fotos.",
+    items: [
+      {
+        valor: "40%",
+        titulo: "menos visitas que no rinden",
+        texto:
+          "Quien recorre primero descarta el lugar sin pedirte la llave. En la industria se estima cerca de un 40% menos de visitas que no llegan a nada.",
+      },
+      {
+        valor: "2×",
+        titulo: "el interés del aviso",
+        texto:
+          "Una publicación con tour puede duplicar el interés frente a otra que solo muestra fotos sueltas.",
+      },
+      {
+        valor: "67%",
+        titulo: "prefiere el aviso con tour",
+        texto:
+          "En una encuesta, la mayoría eligió las publicaciones donde se puede ver el lugar antes de coordinar la visita.",
+      },
+    ],
+    fuentes:
+      "Referencias de la industria, no cifras de ShowtimeProp. El 40% y el doble de interés están citados por Digital in the Round. El 67% lo recoge Momentum Virtual Tours a partir de una encuesta de Google.",
+    fuentesLinks: [
+      {
+        label: "Digital in the Round",
+        href: "https://digitalintheround.com/virtual-tour-statistics/",
+      },
+      {
+        label: "Momentum Virtual Tours",
+        href: "https://www.momentumvirtualtours.com/real-estate-virtual-tour-statistics/",
+      },
+    ],
+  },
+
   cream: {
     kicker: "Así se ve del otro lado",
     title: "Un link.",
@@ -218,6 +257,11 @@ export const content = {
       {
         pregunta: "¿Cuánto cuesta el hosting?",
         respuesta: precioHosting,
+      },
+      {
+        pregunta: "¿Me sirve si ya tengo fotos?",
+        respuesta:
+          "Las fotos muestran el lugar. El tour deja recorrerlo: distribución, luz y si cierra o no. Por eso se coordinan menos visitas, y las que se hacen vienen con una decisión más armada. También rinde si el interesado está en otra ciudad y no puede pasar hoy.",
       },
       {
         pregunta: "¿El link vence en algún momento?",
