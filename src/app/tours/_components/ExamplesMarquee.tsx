@@ -1,19 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Dumbbell, Home, MapPin, PawPrint, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { content } from "../_lib/content";
-import { showcaseClients, type ClientCategory, type ShowcaseClient } from "../_lib/site";
+import { showcaseClients, type ShowcaseClient } from "../_lib/site";
 import { Marquee } from "./ui/Marquee";
 import { TourModal } from "./ui/TourModal";
 import { cn } from "@/lib/utils";
-
-const categoryIcon: Record<ClientCategory, typeof Building2> = {
-  gimnasio: Dumbbell,
-  veterinaria: PawPrint,
-  inmobiliaria: Building2,
-  airbnb: Home,
-};
 
 export function ExamplesMarquee() {
   const { clientes } = content;
@@ -49,32 +42,32 @@ export function ExamplesMarquee() {
       <div className="relative mt-12" data-reveal data-reveal-delay="120">
         <Marquee durationSeconds={50}>
           {showcaseClients.map((client) => {
-            const Icon = categoryIcon[client.categoria];
             return (
               <button
                 key={client.slug}
                 type="button"
                 onClick={() => handleCardClick(client)}
-                className="group mx-2.5 flex w-64 shrink-0 cursor-pointer flex-col gap-4 rounded-card border border-hairline-2 bg-surface p-6 text-left transition-all duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_20px_40px_-15px_rgba(245,197,24,0.2)]"
+                className="group relative mx-2.5 flex h-[22rem] w-64 shrink-0 cursor-pointer flex-col justify-end overflow-hidden rounded-card border border-white/10 p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_20px_40px_-15px_rgba(245,197,24,0.25)]"
               >
-                <div className="flex items-center justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gold/12">
-                    <Icon className="h-5 w-5 text-gold" />
-                  </span>
-                  <span className="rounded-pill border border-hairline-2 px-2.5 py-1 text-[11px] font-medium text-muted-tours">
-                    {client.categoriaLabel}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-tours-sans text-[15px] font-semibold text-white">{client.nombre}</p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-tours">
+                <img
+                  src={client.poster}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <span className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/10" />
+                <span className="absolute right-3 top-3 rounded-pill border border-white/15 bg-ink/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                  {client.categoriaLabel}
+                </span>
+                <span className="relative">
+                  <p className="font-tours-sans text-[15px] font-semibold leading-snug text-white">{client.nombre}</p>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-white/80">
                     <MapPin className="h-3 w-3" />
                     {client.lugar}
                   </p>
-                </div>
-                <p className="text-xs font-medium text-gold transition-colors group-hover:text-gold-hi">
-                  {client.tours.length > 1 ? clientes.ctaMultiple : clientes.ctaCategoria} →
-                </p>
+                  <p className="mt-3 text-xs font-medium text-gold transition-colors group-hover:text-gold-hi">
+                    {client.tours.length > 1 ? clientes.ctaMultiple : clientes.ctaCategoria} →
+                  </p>
+                </span>
               </button>
             );
           })}

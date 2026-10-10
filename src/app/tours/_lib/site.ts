@@ -22,6 +22,7 @@ export type ShowcaseClient = {
   categoriaLabel: string;
   lugar: string;
   contacto: string;
+  poster: string;
   tours: ClientTour[];
 };
 
@@ -33,6 +34,7 @@ export const showcaseClients: ShowcaseClient[] = [
     categoriaLabel: "Gimnasio",
     lugar: "Mar de Cobo",
     contacto: "Gabriel y Mary",
+    poster: "/tours-cards/fortaleza-fit.jpg",
     tours: [
       {
         label: "Fortaleza Fit",
@@ -47,6 +49,7 @@ export const showcaseClients: ShowcaseClient[] = [
     categoriaLabel: "Veterinaria",
     lugar: "Santa Clara del Mar",
     contacto: "Dr. Adrian Cirfaglia",
+    poster: "/tours-cards/cirfaglia-veterinaria.jpg",
     tours: [
       {
         label: "Adrian Cirfaglia Veterinaria",
@@ -61,6 +64,7 @@ export const showcaseClients: ShowcaseClient[] = [
     categoriaLabel: "Bienes raíces",
     lugar: "Mar del Plata",
     contacto: "Romina Alejandra Remigio",
+    poster: "/tours-cards/remax-acqua.jpg",
     tours: [
       {
         label: "Florida 52",
@@ -87,6 +91,7 @@ export const showcaseClients: ShowcaseClient[] = [
     categoriaLabel: "Bienes raíces",
     lugar: "Punta Mogotes",
     contacto: "Sebastián Acevedo",
+    poster: "/tours-cards/remax-surf.jpg",
     tours: [
       {
         label: "Médano Blanco",
@@ -109,6 +114,7 @@ export const showcaseClients: ShowcaseClient[] = [
     categoriaLabel: "Airbnb",
     lugar: "Mar del Plata",
     contacto: "Bianca Nicolini",
+    poster: "/tours-cards/dimeglio-propiedades.jpg",
     tours: [
       {
         label: "Palacio Cosmos",
