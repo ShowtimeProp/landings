@@ -54,7 +54,7 @@ export function ExamplesMarquee() {
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <span className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/10" />
+                <span className="absolute inset-0 bg-gradient-to-t from-ink via-ink/35 to-transparent" />
                 <span className="absolute right-3 top-3 rounded-pill border border-white/15 bg-ink/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
                   {client.categoriaLabel}
                 </span>
