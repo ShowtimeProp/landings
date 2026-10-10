@@ -1,5 +1,6 @@
 export const site = {
   url: "https://tours.showtimeprop.com",
+  mainUrl: "https://showtimeprop.com/",
   whatsapp: "5492233544057", // instancia stp-showtimeprop-marketing
   logo: "/showtime-logo.png",
 };

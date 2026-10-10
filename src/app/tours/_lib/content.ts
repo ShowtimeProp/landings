@@ -1,3 +1,5 @@
+import { site } from "./site";
+
 /**
  * Precios públicos de tours (definidos y confirmados por el dueño el 28-sep-2026). Sólo el
  * tramo más económico: arriba de 50 m² se cotiza. Todo en USD + IVA.
@@ -32,6 +34,7 @@ export const content = {
 
   nav: {
     links: [
+      { href: site.mainUrl, label: "Inicio" },
       { href: "#demo", label: "Ver un tour" },
       { href: "#clientes", label: "Clientes" },
       { href: "#proceso", label: "Cómo funciona" },

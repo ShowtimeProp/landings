@@ -27,7 +27,7 @@ export function Navbar() {
       )}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <a href="#" className="flex items-center gap-2.5">
+        <a href={site.mainUrl} aria-label="ShowtimeProp — página principal" className="flex items-center gap-2.5">
           <Image src={site.logo} alt="ShowtimeProp" width={32} height={32} className="rounded-full" />
           <span className="font-tours-sans text-[15px] font-semibold tracking-[-0.02em] text-white">
             ShowtimeProp
@@ -35,7 +35,7 @@ export function Navbar() {
           </span>
         </a>
 
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav aria-label="Navegación principal" className="hidden items-center gap-7 lg:flex">
           {content.nav.links.map((link) => (
             <a
               key={link.href}
@@ -47,7 +47,7 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <GlassCta href={waLink(content.whatsappFloat.mensaje)} tone="gold" className="!px-5 !py-2.5 !text-sm">
             {content.nav.cta}
           </GlassCta>
@@ -56,16 +56,18 @@ export function Navbar() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-hairline-2 text-white md:hidden"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-hairline-2 text-white lg:hidden"
           aria-label="Menú"
+          aria-expanded={open}
+          aria-controls="tours-mobile-navigation"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {open && (
-        <div className="border-t border-hairline bg-ink/95 px-5 py-5 backdrop-blur-xl md:hidden">
-          <nav className="flex flex-col gap-4">
+        <div className="border-t border-hairline bg-ink/95 px-5 py-5 backdrop-blur-xl lg:hidden">
+          <nav id="tours-mobile-navigation" aria-label="Navegación móvil" className="flex flex-col gap-4">
             {content.nav.links.map((link) => (
               <a
                 key={link.href}
