@@ -95,6 +95,8 @@ async function buildSitemapResponse(
   { params }: { params: Promise<{ tenant_slug: string }> }
 ): Promise<Response> {
   const { tenant_slug } = await params;
+  const moved = await oldTenantSlugRedirectResponse(request, tenant_slug, { rest: '/sitemap.xml' });
+  if (moved) return moved;
   const base = `${LANDINGS_URL}/p/${encodeURIComponent(tenant_slug)}`;
 
   const portfolio = await fetchJson(
@@ -104,8 +106,6 @@ async function buildSitemapResponse(
   // Tenant inexistente: 404 en vez de un sitemap vacío, que Google
   // interpretaría como "acá no hay nada" para un slug que quizá sí existe.
   if (!portfolio) {
-    const moved = await oldTenantSlugRedirectResponse(request, tenant_slug, { rest: '/sitemap.xml' });
-    if (moved) return moved;
     return new Response('Not found', { status: 404 });
   }
 

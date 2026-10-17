@@ -1,9 +1,12 @@
 /**
  * Slugs de tenant que cambiaron. El tenant puede cambiar la URL de su portfolio
- * desde Cuenta; el backend guarda los slugs viejos. Cuando una ruta /p/<slug>/…
- * no encuentra al tenant, antes de responder 404 se pregunta si es un slug viejo
- * y se redirige (301) al actual, así no se rompen links compartidos, QR impresos
- * ni lo que Google ya indexó.
+ * desde Cuenta; el backend guarda los slugs viejos. Cada ruta /p/<slug>/… pregunta
+ * PRIMERO si el slug es viejo y redirige (301) al actual, así no se rompen links
+ * compartidos, QR impresos ni lo que Google ya indexó.
+ *
+ * Tiene que ir antes del fetch de datos, no en el 404: Next sólo guarda en caché
+ * respuestas 200, y si al renovar el portfolio el backend da 404, sigue sirviendo
+ * para siempre la copia vieja (con el slug viejo) y nunca se llega al 404.
  *
  * Sólo para código de servidor.
  */
@@ -54,7 +57,7 @@ export function buildTenantSlugPath(prefix: string, slug: string, rest = '', sea
   return `${prefix}/${encodeURIComponent(slug)}${rest}${toQueryString(searchParams)}`;
 }
 
-/** Para páginas: si el slug es viejo, 301 al actual; si no, vuelve y la página sigue con notFound(). */
+/** Para páginas: si el slug es viejo, 301 al actual; si no, vuelve y la página sigue normal. */
 export async function redirectIfOldTenantSlug(
   oldSlug: string,
   opts: { prefix?: string; rest?: string; searchParams?: SearchParamsLike } = {},

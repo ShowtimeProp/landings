@@ -139,13 +139,11 @@ export default async function TenantBlogPage({
 }) {
   const { tenant_slug } = await params;
   const resolvedSearch = await searchParams;
+  await redirectIfOldTenantSlug(tenant_slug, { rest: '/blog', searchParams: resolvedSearch });
   const referralCode = normalizeReferralCode(resolvedSearch.ref);
   const theme = normalizeTheme(resolvedSearch.theme);
   const data = await fetchBlogIndex(tenant_slug, referralCode);
-  if (!data?.blog_enabled || !data.tenant) {
-    if (!data?.tenant) await redirectIfOldTenantSlug(tenant_slug, { rest: '/blog', searchParams: resolvedSearch });
-    notFound();
-  }
+  if (!data?.blog_enabled || !data.tenant) notFound();
   const tenant = data.tenant;
   const articles = data.articles || [];
   const featured = articles.find((article) => article.is_featured) || articles[0];

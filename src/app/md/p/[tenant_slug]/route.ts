@@ -11,11 +11,10 @@ export async function GET(
 ) {
   const { tenant_slug } = await params;
   return withBackendGuard(request, async () => {
+    const current = await findCurrentTenantSlug(tenant_slug);
+    if (current) return markdownMoved(request, `/p/${encodeURIComponent(current)}`);
     const data = await fetchPublicPortfolio(tenant_slug);
-    if (!data) {
-      const current = await findCurrentTenantSlug(tenant_slug);
-      return current ? markdownMoved(request, `/p/${encodeURIComponent(current)}`) : markdownNotFound(request);
-    }
+    if (!data) return markdownNotFound(request);
     return markdownResponse(request, buildPortfolioMarkdown(data.tenant, data.properties), {
       canonical: portfolioUrl(data.tenant.slug),
     });

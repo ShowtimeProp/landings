@@ -280,6 +280,10 @@ export default async function PropertyLandingPage({
 }) {
   const { tenant_slug, property_slug } = await params;
   const resolvedSearchParams = await searchParams;
+  await redirectIfOldTenantSlug(tenant_slug, {
+    rest: `/${encodeURIComponent(property_slug)}`,
+    searchParams: resolvedSearchParams,
+  });
   const slotParam = firstSearchValue(resolvedSearchParams.slot).trim();
   if (slotParam) {
     redirect(buildSlotResolverRedirect(tenant_slug, slotParam, resolvedSearchParams));
@@ -295,13 +299,7 @@ export default async function PropertyLandingPage({
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
   const data = await fetchPublicProperty(tenant_slug, property_slug, referralCode || null, resolvedSearchParams);
-  if (!data) {
-    await redirectIfOldTenantSlug(tenant_slug, {
-      rest: `/${encodeURIComponent(property_slug)}`,
-      searchParams: resolvedSearchParams,
-    });
-    notFound();
-  }
+  if (!data) notFound();
 
   const { tenant, property } = data;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant.slug}/${property.slug || property_slug}`;

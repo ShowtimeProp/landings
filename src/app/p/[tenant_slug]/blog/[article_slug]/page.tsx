@@ -187,19 +187,15 @@ export default async function BlogArticlePage({
 }) {
   const { tenant_slug, article_slug } = await params;
   const resolvedSearch = await searchParams;
+  await redirectIfOldTenantSlug(tenant_slug, {
+    rest: `/blog/${encodeURIComponent(article_slug)}`,
+    searchParams: resolvedSearch,
+  });
   const referralCode = normalizeReferralCode(resolvedSearch.ref);
   const theme = normalizeTheme(resolvedSearch.theme);
   const campaignQueryString = buildCampaignQueryString(resolvedSearch, referralCode);
   const data = await fetchArticle(tenant_slug, article_slug, referralCode);
-  if (!data?.article || !data.tenant) {
-    if (!data?.tenant) {
-      await redirectIfOldTenantSlug(tenant_slug, {
-        rest: `/blog/${encodeURIComponent(article_slug)}`,
-        searchParams: resolvedSearch,
-      });
-    }
-    notFound();
-  }
+  if (!data?.article || !data.tenant) notFound();
   const { tenant, article } = data;
   const tenantName = tenant.tenant_name || tenant.name;
   const contactName = tenant.realtor_name || tenantName;

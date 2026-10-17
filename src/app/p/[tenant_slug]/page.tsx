@@ -423,14 +423,12 @@ export default async function PortfolioPage({
 }) {
   const { tenant_slug } = await params;
   const resolvedSearchParams = await searchParams;
+  await redirectIfOldTenantSlug(tenant_slug, { searchParams: resolvedSearchParams });
   const themeParam = resolvedSearchParams.theme;
   const refParam = resolvedSearchParams.ref;
   const referralCode = normalizeReferralCode(refParam);
   const data = await fetchPortfolio(tenant_slug, referralCode);
-  if (!data) {
-    await redirectIfOldTenantSlug(tenant_slug, { searchParams: resolvedSearchParams });
-    notFound();
-  }
+  if (!data) notFound();
   const blogSummary = await fetchPublicBlogSummary(tenant_slug, referralCode);
 
   const { tenant, properties } = data;

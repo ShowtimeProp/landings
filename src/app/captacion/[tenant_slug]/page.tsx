@@ -112,15 +112,13 @@ export default async function OwnerCapturePage({
 }) {
   const { tenant_slug } = await params;
   const resolvedSearchParams = await searchParams;
+  await redirectIfOldTenantSlug(tenant_slug, { prefix: '/captacion', searchParams: resolvedSearchParams });
   const referralCode = normalizeReferralCode(
     Array.isArray(resolvedSearchParams.ref) ? resolvedSearchParams.ref[0] : resolvedSearchParams.ref
   );
   const portfolio = await fetchPortfolio(tenant_slug, referralCode);
   const tenant = portfolio?.tenant || null;
-  if (!tenant) {
-    await redirectIfOldTenantSlug(tenant_slug, { prefix: '/captacion', searchParams: resolvedSearchParams });
-    notFound();
-  }
+  if (!tenant) notFound();
 
   const properties = Array.isArray(portfolio?.properties) ? portfolio.properties : [];
   const defaultPropertyId = properties[0]?.id ?? null;

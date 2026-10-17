@@ -12,13 +12,12 @@ export async function GET(
 ) {
   const { tenant_slug, property_slug } = await params;
   return withBackendGuard(request, async () => {
-    const data = await fetchPublicProperty(tenant_slug, property_slug);
-    if (!data) {
-      const current = await findCurrentTenantSlug(tenant_slug);
-      return current
-        ? markdownMoved(request, `/p/${encodeURIComponent(current)}/${encodeURIComponent(property_slug)}`)
-        : markdownNotFound(request);
+    const current = await findCurrentTenantSlug(tenant_slug);
+    if (current) {
+      return markdownMoved(request, `/p/${encodeURIComponent(current)}/${encodeURIComponent(property_slug)}`);
     }
+    const data = await fetchPublicProperty(tenant_slug, property_slug);
+    if (!data) return markdownNotFound(request);
     if ('movedTo' in data) {
       return markdownMoved(request, `/p/${encodeURIComponent(tenant_slug)}/${encodeURIComponent(data.movedTo)}`);
     }
