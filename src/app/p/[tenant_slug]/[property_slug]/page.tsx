@@ -11,6 +11,7 @@ import { buildPropertyStructuredData } from "@/lib/seo/property-structured-data"
 import { serializeJsonLd } from "@/lib/seo/serialize-json-ld";
 import { cleanDescription, cleanText } from "@/lib/text";
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from "@/lib/backend";
+import { redirectIfOldTenantSlug } from "@/lib/tenant-slug-redirect";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://agent.showtimeprop.com";
@@ -294,7 +295,13 @@ export default async function PropertyLandingPage({
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
   const data = await fetchPublicProperty(tenant_slug, property_slug, referralCode || null, resolvedSearchParams);
-  if (!data) notFound();
+  if (!data) {
+    await redirectIfOldTenantSlug(tenant_slug, {
+      rest: `/${encodeURIComponent(property_slug)}`,
+      searchParams: resolvedSearchParams,
+    });
+    notFound();
+  }
 
   const { tenant, property } = data;
   const canonicalUrl = `${LANDINGS_URL}/p/${tenant.slug}/${property.slug || property_slug}`;

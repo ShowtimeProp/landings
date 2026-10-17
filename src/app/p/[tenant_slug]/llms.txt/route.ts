@@ -1,13 +1,17 @@
 import { BackendUnavailableError } from '@/lib/backend';
 import { fetchPublicPortfolio } from '@/lib/data/public-api';
 import { buildTenantLlms, llmsHeaders } from '@/lib/markdown/llms';
+import { oldTenantSlugRedirectResponse } from '@/lib/tenant-slug-redirect';
 
 export const revalidate = 3600;
-export async function GET(_request: Request, { params }: { params: Promise<{ tenant_slug: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ tenant_slug: string }> }) {
   try {
     const { tenant_slug } = await params;
     const portfolio = await fetchPublicPortfolio(tenant_slug);
-    if (!portfolio) return new Response('No encontrado\n', { status: 404, headers: { ...llmsHeaders, 'Cache-Control': 'no-store' } });
+    if (!portfolio) {
+      const moved = await oldTenantSlugRedirectResponse(request, tenant_slug, { rest: '/llms.txt' });
+      return moved ?? new Response('No encontrado\n', { status: 404, headers: { ...llmsHeaders, 'Cache-Control': 'no-store' } });
+    }
     return new Response(buildTenantLlms(portfolio), { headers: llmsHeaders });
   } catch (error) {
     if (!(error instanceof BackendUnavailableError)) throw error;

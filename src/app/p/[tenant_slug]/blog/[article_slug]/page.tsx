@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import BlogLeadForm from '@/components/BlogLeadForm';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
+import { redirectIfOldTenantSlug } from '@/lib/tenant-slug-redirect';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -190,7 +191,15 @@ export default async function BlogArticlePage({
   const theme = normalizeTheme(resolvedSearch.theme);
   const campaignQueryString = buildCampaignQueryString(resolvedSearch, referralCode);
   const data = await fetchArticle(tenant_slug, article_slug, referralCode);
-  if (!data?.article || !data.tenant) notFound();
+  if (!data?.article || !data.tenant) {
+    if (!data?.tenant) {
+      await redirectIfOldTenantSlug(tenant_slug, {
+        rest: `/blog/${encodeURIComponent(article_slug)}`,
+        searchParams: resolvedSearch,
+      });
+    }
+    notFound();
+  }
   const { tenant, article } = data;
   const tenantName = tenant.tenant_name || tenant.name;
   const contactName = tenant.realtor_name || tenantName;

@@ -17,6 +17,7 @@ import { TenantSocialLinks } from '@/components/social-links';
 import QRCode from 'qrcode';
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
 import { googleReviewsHref } from '@/lib/google-reviews';
+import { redirectIfOldTenantSlug } from '@/lib/tenant-slug-redirect';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -426,7 +427,10 @@ export default async function PortfolioPage({
   const refParam = resolvedSearchParams.ref;
   const referralCode = normalizeReferralCode(refParam);
   const data = await fetchPortfolio(tenant_slug, referralCode);
-  if (!data) notFound();
+  if (!data) {
+    await redirectIfOldTenantSlug(tenant_slug, { searchParams: resolvedSearchParams });
+    notFound();
+  }
   const blogSummary = await fetchPublicBlogSummary(tenant_slug, referralCode);
 
   const { tenant, properties } = data;

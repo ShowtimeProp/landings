@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import QRCode from 'qrcode';
 import OwnerCaptureFunnelClient from '@/components/OwnerCaptureFunnelClient';
 import { backendSsrHeaders } from '@/lib/backend';
+import { redirectIfOldTenantSlug } from '@/lib/tenant-slug-redirect';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
@@ -116,7 +117,10 @@ export default async function OwnerCapturePage({
   );
   const portfolio = await fetchPortfolio(tenant_slug, referralCode);
   const tenant = portfolio?.tenant || null;
-  if (!tenant) notFound();
+  if (!tenant) {
+    await redirectIfOldTenantSlug(tenant_slug, { prefix: '/captacion', searchParams: resolvedSearchParams });
+    notFound();
+  }
 
   const properties = Array.isArray(portfolio?.properties) ? portfolio.properties : [];
   const defaultPropertyId = properties[0]?.id ?? null;

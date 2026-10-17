@@ -3,6 +3,7 @@ import { propertyUrl } from '@/lib/markdown/format';
 import { markdownMoved, markdownNotFound, markdownResponse, withBackendGuard } from '@/lib/markdown/response';
 import { buildPropertyMarkdown } from '@/lib/markdown/views';
 import { cleanText } from '@/lib/text';
+import { findCurrentTenantSlug } from '@/lib/tenant-slug-redirect';
 
 // Markdown de la ficha. Ruta interna: se llega por negociación o por /p/{t}/{slug}.md.
 export async function GET(
@@ -12,7 +13,12 @@ export async function GET(
   const { tenant_slug, property_slug } = await params;
   return withBackendGuard(request, async () => {
     const data = await fetchPublicProperty(tenant_slug, property_slug);
-    if (!data) return markdownNotFound(request);
+    if (!data) {
+      const current = await findCurrentTenantSlug(tenant_slug);
+      return current
+        ? markdownMoved(request, `/p/${encodeURIComponent(current)}/${encodeURIComponent(property_slug)}`)
+        : markdownNotFound(request);
+    }
     if ('movedTo' in data) {
       return markdownMoved(request, `/p/${encodeURIComponent(tenant_slug)}/${encodeURIComponent(data.movedTo)}`);
     }

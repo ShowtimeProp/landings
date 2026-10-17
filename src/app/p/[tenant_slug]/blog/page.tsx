@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import LeadPortalAuthLauncher from '@/components/LeadPortalAuthLauncher';
 import { BackendUnavailableError, backendSsrHeaders, isBackendUnavailable } from '@/lib/backend';
+import { redirectIfOldTenantSlug } from '@/lib/tenant-slug-redirect';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
 const LANDINGS_URL = process.env.NEXT_PUBLIC_LANDINGS_URL || process.env.LANDINGS_URL || 'https://landings.showtimeprop.com';
@@ -141,7 +142,10 @@ export default async function TenantBlogPage({
   const referralCode = normalizeReferralCode(resolvedSearch.ref);
   const theme = normalizeTheme(resolvedSearch.theme);
   const data = await fetchBlogIndex(tenant_slug, referralCode);
-  if (!data?.blog_enabled || !data.tenant) notFound();
+  if (!data?.blog_enabled || !data.tenant) {
+    if (!data?.tenant) await redirectIfOldTenantSlug(tenant_slug, { rest: '/blog', searchParams: resolvedSearch });
+    notFound();
+  }
   const tenant = data.tenant;
   const articles = data.articles || [];
   const featured = articles.find((article) => article.is_featured) || articles[0];
