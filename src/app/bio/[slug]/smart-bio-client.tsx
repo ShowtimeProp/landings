@@ -93,7 +93,7 @@ type SmartBioData = {
 };
 
 const LANGS = ['es', 'en', 'pt'] as const;
-const WIDGET_ASSET_VERSION = '20260711-smart-bio';
+const WIDGET_ASSET_VERSION = 'voice-booking-sync-20261027';
 const THEME_STORAGE_KEY = 'sp_smart_bio_theme_mode';
 
 const OPERATION_LABELS: Record<'es' | 'en' | 'pt', Record<string, string>> = {

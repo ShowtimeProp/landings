@@ -26,7 +26,7 @@ import QRCode from 'qrcode';
 import { googleReviewsHref } from '@/lib/google-reviews';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://agent.showtimeprop.com';
-const WIDGET_ASSET_VERSION = 'voice-runtime-v2-20261026';
+const WIDGET_ASSET_VERSION = 'voice-booking-sync-20261027';
 const PORTAL_API_BASE = '/api/portal';
 const TOKEN_KEY = 'lead_portal_token';
 const AUTH_EVENT = 'lead-portal-auth-changed';
